@@ -81,7 +81,7 @@ const STEPS = [
   'Warranty',
   'Problem',
   'System Health',
-  'Photos/Videos',
+  'Other Uploads',
   'Upgrades',
   'Quote Options',
   'Review',
@@ -657,6 +657,20 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   const navigateToStep = (stepNum: number) => {
     setStep(stepNum);
     setVisitedSteps(prev => new Set(prev).add(stepNum));
+  };
+
+  // Step completion checks
+  const isStepComplete = (s: number): boolean => {
+    switch (s) {
+      case 1: return !!(equipmentInfo.equipment_type && equipmentInfo.make);
+      case 2: return true; // warranty is always optional
+      case 3: return !!(problemFound.trim());
+      case 4: return Object.keys(healthRatings).length > 0 || Object.keys(healthExtras).length > 0;
+      case 5: return media.length > 0 || pendingFiles.length > 0;
+      case 6: return true; // upgrades are optional
+      case 7: return quoteOptions.some(o => o.items.some(i => i.description.trim()));
+      default: return false;
+    }
   };
 
   // Review/Payment availability
@@ -1255,7 +1269,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
   const renderStep5 = () => (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">Photos & Videos</h3>
+      <h3 className="text-lg font-semibold text-gray-900">Other Uploads</h3>
 
       <div className="flex flex-wrap gap-3">
         <Button variant="outline" onClick={() => cameraInputRef.current?.click()}>
@@ -1505,8 +1519,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                     <button
                       type="button"
                       onClick={() => {
-                        const updated = quoteOptions.map((o, i) => ({ ...o, is_recommended: i === optIdx }));
-                        setQuoteOptions(updated);
+                        if (opt.is_recommended) {
+                          const updated = quoteOptions.map((o, i) => (i === optIdx ? { ...o, is_recommended: false } : o));
+                          setQuoteOptions(updated);
+                        } else {
+                          const updated = quoteOptions.map((o, i) => ({ ...o, is_recommended: i === optIdx }));
+                          setQuoteOptions(updated);
+                        }
                       }}
                       className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
                         opt.is_recommended
@@ -1514,7 +1533,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                           : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'
                       }`}
                     >
-                      {opt.is_recommended ? 'Recommended' : 'Set Recommended'}
+                      {opt.is_recommended ? '✓ Recommended' : 'Set Recommended'}
                     </button>
                   </div>
 
@@ -1715,7 +1734,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
           <Card>
             <CardContent>
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-gray-900">Photos/Videos ({media.length})</h4>
+                <h4 className="font-medium text-gray-900">Uploads ({media.length})</h4>
                 <button type="button" onClick={() => navigateToStep(5)} className="text-sm text-blue-600 hover:underline">Edit</button>
               </div>
               <div className="flex gap-2 overflow-x-auto">
@@ -2065,8 +2084,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                     ? 'bg-blue-600 text-white'
                     : (isReview && !reviewAvailable) || (isPayment && !paymentAvailable)
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
-                    : visitedSteps.has(stepNum)
+                    : visitedSteps.has(stepNum) && isStepComplete(stepNum)
                     ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
+                    : visitedSteps.has(stepNum) && !isStepComplete(stepNum)
+                    ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 cursor-pointer'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer'
                 }`}
               >
