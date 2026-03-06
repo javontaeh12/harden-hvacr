@@ -7,14 +7,14 @@ import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   ClipboardList,
-  Settings,
+  Truck,
   Loader2,
 } from 'lucide-react';
 
 const navItems = [
   { label: 'Dashboard', href: '/admin/tech', icon: LayoutDashboard, exact: true },
   { label: 'Jobs', href: '/admin/tech/jobs', icon: ClipboardList, exact: false },
-  { label: 'Admin', href: '/admin', icon: Settings, exact: true },
+  { label: 'Van', href: '/admin/tech/van', icon: Truck, exact: true },
 ];
 
 export default function TechBottomNav() {

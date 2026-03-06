@@ -100,9 +100,9 @@ export default function MobileReportPage({
 
       <ServiceReportBuilder
         initialCustomerId={customerId}
+        workOrderId={workOrderId}
         onClose={() => router.back()}
         onSaved={() => {
-          // Could show a toast or navigate back; for now just go back to job detail
           router.back();
         }}
       />

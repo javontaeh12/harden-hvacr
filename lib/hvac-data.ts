@@ -222,6 +222,32 @@ export const AREA_SUGGESTIONS = [
   'Break Room', 'Warehouse', 'Loading Dock',
 ];
 
+// Area suggestions filtered by equipment type
+const RESIDENTIAL_AREAS = [
+  'Entire Building', '1st Floor', '2nd Floor', '3rd Floor', 'Basement', 'Attic',
+  'Master Bedroom', 'Living Room', 'Kitchen', 'Dining Room', 'Bathroom',
+  'Garage', 'Office', 'Bonus Room', 'Laundry Room', 'Sunroom',
+];
+
+const COMMERCIAL_AREAS = [
+  'Entire Building', 'Server Room', 'Walk-in Cooler', 'Walk-in Freezer', 'Display Case',
+  'Reach-in Cooler', 'Reach-in Freezer', 'Ice Machine Area', 'Prep Area',
+  'Storage Area', 'Front of House', 'Back of House', 'Outdoor Area',
+  'Rooftop Unit Area', 'Mechanical Room', 'Lobby', 'Conference Room',
+  'Break Room', 'Warehouse', 'Loading Dock',
+];
+
+const COMMERCIAL_EQUIPMENT = [
+  'Walk-in Cooler', 'Walk-in Freezer', 'Reach-in Cooler', 'Reach-in Freezer',
+  'Ice Machine', 'Display Case', 'Prep Table',
+];
+
+export function getAreaSuggestions(equipmentType: string): string[] {
+  if (!equipmentType) return AREA_SUGGESTIONS;
+  if (COMMERCIAL_EQUIPMENT.includes(equipmentType)) return COMMERCIAL_AREAS;
+  return RESIDENTIAL_AREAS;
+}
+
 // Extended equipment types (includes commercial refrigeration)
 export const EQUIPMENT_TYPES = [
   'Air Conditioner', 'Heat Pump', 'Furnace', 'Mini Split', 'Package Unit',

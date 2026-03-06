@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { PhoneIcon, MenuIcon, XIcon, ChevronDownIcon } from './icons';
@@ -24,9 +24,9 @@ const refrigerationServices = Object.values(servicesData)
 
 const navLinks = [
   { label: 'How It Works', href: '/#how-it-works' },
-  { label: 'Request Service', href: '/#request' },
   { label: 'Membership', href: '/membership' },
   { label: 'Reviews', href: '/#reviews' },
+  { label: 'Member Login', href: '/login' },
 ];
 
 export default function Navbar() {
@@ -34,6 +34,15 @@ export default function Navbar() {
   const [servicesOpen, setServicesOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [menuOpen]);
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -137,6 +146,13 @@ export default function Navbar() {
                 )}
               </div>
 
+              <Link
+                href="/#request"
+                className="text-base font-bold text-[var(--navy)] hover:text-[var(--ember)] transition-colors"
+              >
+                Request Service
+              </Link>
+
               {navLinks.map((link) => (
                 <a
                   key={link.href}
@@ -160,26 +176,29 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile menu button — fixed at bottom right */}
-      <button
-        onClick={() => { setMenuOpen(!menuOpen); setServicesOpen(false); }}
-        className="md:hidden fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[var(--navy)] text-white shadow-lg shadow-black/25 flex items-center justify-center active:scale-95 transition-transform"
-        aria-label="Toggle menu"
-      >
-        {menuOpen ? <XIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
-      </button>
+      {/* Mobile menu button — fixed full-width at bottom */}
+      {!menuOpen && (
+        <button
+          onClick={() => { setMenuOpen(true); setServicesOpen(false); }}
+          className="md:hidden fixed bottom-0 left-0 right-0 z-50 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-[var(--ember)] text-white shadow-[0_-2px_10px_rgba(0,0,0,0.15)] flex items-center justify-center gap-2 active:bg-[var(--ember-dark)] transition-colors"
+          aria-label="Open menu"
+        >
+          <MenuIcon className="w-5 h-5" />
+          <span className="text-sm font-semibold">Menu</span>
+        </button>
+      )}
 
       {/* Mobile bottom sheet menu */}
       {menuOpen && (
         <>
           {/* Backdrop */}
           <div
-            className="md:hidden fixed top-0 left-0 right-0 bottom-0 bg-black/40 z-40"
+            className="md:hidden fixed inset-0 bg-black/40 z-40"
             onClick={() => { setMenuOpen(false); setServicesOpen(false); }}
           />
           {/* Sheet */}
-          <div className="md:hidden fixed bottom-0 left-0 right-0 z-45 bg-white rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.15)] max-h-[80vh] overflow-y-auto animate-[slideUp_0.25s_ease-out]">
-            <div className="px-4 pt-3 pb-24">
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.15)] max-h-[85vh] overflow-y-auto animate-[slideUp_0.25s_ease-out]">
+            <div className="px-4 pt-3 pb-6">
               {/* Handle bar */}
               <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
 
@@ -234,13 +253,23 @@ export default function Navbar() {
                   {link.label}
                 </a>
               ))}
-              <a
-                href="tel:9105466485"
-                className="flex items-center justify-center gap-2 mt-3 rounded-full bg-[var(--ember)] px-4 py-3 text-base font-semibold text-white"
+
+              <Link
+                href="/request"
+                onClick={() => { setMenuOpen(false); setServicesOpen(false); }}
+                className="flex items-center justify-center gap-2 mt-3 rounded-xl bg-[var(--ember)] px-4 py-3 text-base font-semibold text-white active:bg-[var(--ember-dark)] transition-colors"
               >
-                <PhoneIcon className="w-5 h-5" />
-                Call (910) 546-6485
-              </a>
+                Request Service
+              </Link>
+
+              {/* Close button at bottom */}
+              <button
+                onClick={() => { setMenuOpen(false); setServicesOpen(false); }}
+                className="flex items-center justify-center gap-2 w-full mt-3 rounded-lg px-4 py-3 text-base font-medium text-[var(--steel)] border border-[var(--border)] active:bg-gray-50 transition-colors"
+              >
+                <XIcon className="w-4 h-4" />
+                Close Menu
+              </button>
             </div>
           </div>
         </>

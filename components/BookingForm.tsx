@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { CheckIcon, UploadIcon, XIcon } from './icons';
 
 const SERVICE_TYPES = [
@@ -22,7 +22,22 @@ const URGENCY_OPTIONS = [
   { value: 'question', label: 'Just a question', desc: '' },
 ];
 
-const STARTED_OPTIONS = ['Today', 'This week', 'More than a week', 'Not sure'];
+const COMMON_PROBLEMS = [
+  'Not cooling',
+  'Not heating',
+  'Leaking water',
+  'Strange noises',
+  'Bad smell',
+  'Won\'t turn on',
+  'Won\'t turn off',
+  'Blowing warm air',
+  'Frozen coils',
+  'Thermostat issues',
+  'Short cycling',
+  'Tripping breaker',
+  'Weak airflow',
+  'Other',
+];
 
 const SYMPTOM_OPTIONS = [
   'Strange noises',
@@ -46,6 +61,14 @@ const SYMPTOM_OPTIONS = [
 
 const STEP_LABELS = ['Contact', 'Service', 'Problem', 'Upload', 'Review'];
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function formatDateDisplay(dateStr: string) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  return `${m}-${d}-${y}`;
+}
+
 interface FormData {
   name: string;
   phone: string;
@@ -56,36 +79,131 @@ interface FormData {
   serviceType: string;
   urgency: string;
   equipmentInfo: string;
-  issue: string;
+  issues: string[];
+  otherIssue: string;
   startedWhen: string;
   symptoms: string[];
-  membershipInterest: boolean;
 }
 
+const STORAGE_KEY = 'harden-booking-form';
+
+function loadSavedForm(): { step: number; form: FormData } | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function saveForm(step: number, form: FormData) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ step, form }));
+  } catch { /* ignore */ }
+}
+
+function clearSavedForm() {
+  try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+}
+
+const DEFAULT_FORM: FormData = {
+  name: '',
+  phone: '',
+  email: '',
+  address: '',
+  city: '',
+  zip: '',
+  serviceType: '',
+  urgency: '',
+  equipmentInfo: '',
+  issues: [],
+  otherIssue: '',
+  startedWhen: '',
+  symptoms: [],
+};
+
 export default function BookingForm() {
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState<FormData>({
-    name: '',
-    phone: '',
-    email: '',
-    address: '',
-    city: '',
-    zip: '',
-    serviceType: '',
-    urgency: '',
-    equipmentInfo: '',
-    issue: '',
-    startedWhen: '',
-    symptoms: [],
-    membershipInterest: false,
-  });
+  const saved = useRef(loadSavedForm());
+  const [step, setStep] = useState(saved.current?.step ?? 1);
+  const [form, setForm] = useState<FormData>(saved.current?.form ?? { ...DEFAULT_FORM });
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [emailTouched, setEmailTouched] = useState(false);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const addressRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
-  const update = (fields: Partial<FormData>) => setForm(prev => ({ ...prev, ...fields }));
+  const update = useCallback((fields: Partial<FormData>) => setForm(prev => ({ ...prev, ...fields })), []);
+
+  // Persist form state to sessionStorage
+  useEffect(() => {
+    saveForm(step, form);
+  }, [step, form]);
+
+  // Load Google Places Autocomplete
+  useEffect(() => {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey || !addressRef.current) return;
+
+    const initAutocomplete = () => {
+      if (!addressRef.current || autocompleteRef.current) return;
+      const ac = new google.maps.places.Autocomplete(addressRef.current, {
+        types: ['address'],
+        componentRestrictions: { country: 'us' },
+        fields: ['address_components', 'formatted_address'],
+      });
+      ac.addListener('place_changed', () => {
+        const place = ac.getPlace();
+        if (!place.address_components) return;
+        let street = '';
+        let city = '';
+        let zip = '';
+        for (const comp of place.address_components) {
+          const t = comp.types[0];
+          if (t === 'street_number') street = comp.long_name + ' ';
+          if (t === 'route') street += comp.long_name;
+          if (t === 'locality') city = comp.long_name;
+          if (t === 'postal_code') zip = comp.short_name;
+        }
+        update({ address: street.trim(), city, zip });
+      });
+      autocompleteRef.current = ac;
+    };
+
+    if (window.google?.maps?.places) {
+      initAutocomplete();
+      return;
+    }
+
+    // Load script if not already present
+    if (!document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+      script.async = true;
+      script.onload = initAutocomplete;
+      document.head.appendChild(script);
+    } else {
+      // Script exists but hasn't loaded yet
+      const check = setInterval(() => {
+        if (window.google?.maps?.places) {
+          clearInterval(check);
+          initAutocomplete();
+        }
+      }, 100);
+      return () => clearInterval(check);
+    }
+  }, [step, update]);
+
+  const toggleIssue = (p: string) => {
+    setForm(prev => ({
+      ...prev,
+      issues: prev.issues.includes(p)
+        ? prev.issues.filter(x => x !== p)
+        : [...prev.issues, p],
+    }));
+  };
 
   const toggleSymptom = (s: string) => {
     setForm(prev => ({
@@ -117,18 +235,31 @@ export default function BookingForm() {
     setPreviews(prev => prev.filter((_, idx) => idx !== i));
   };
 
+  const emailValid = EMAIL_RE.test(form.email);
+
   const canNext = () => {
-    if (step === 1) return form.name && form.phone && form.email && form.address && form.city && form.zip;
+    if (step === 1) return form.name && form.phone && emailValid && form.address && form.city && form.zip;
     if (step === 2) return form.serviceType && form.urgency;
-    if (step === 3) return form.issue;
+    if (step === 3) {
+      const hasIssue = form.issues.filter(i => i !== 'Other').length > 0;
+      const hasOther = form.issues.includes('Other') && form.otherIssue.trim().length > 0;
+      return hasIssue || hasOther;
+    }
     return true;
+  };
+
+  const getIssueString = () => {
+    const selected = form.issues.filter(i => i !== 'Other');
+    if (form.issues.includes('Other') && form.otherIssue.trim()) {
+      selected.push(form.otherIssue.trim());
+    }
+    return selected.join(', ');
   };
 
   const handleSubmit = async () => {
     setStatus('loading');
     setErrorMsg('');
     try {
-      // Upload files if any
       const fileUrls: string[] = [];
       for (const file of files) {
         const fd = new FormData();
@@ -154,11 +285,10 @@ export default function BookingForm() {
           service_type: form.serviceType,
           urgency: form.urgency,
           equipment_info: form.equipmentInfo,
-          issue: form.issue,
+          issue: getIssueString(),
           started_when: form.startedWhen,
           symptoms: form.symptoms,
           file_urls: fileUrls,
-          membership_interest: form.membershipInterest,
         }),
       });
 
@@ -167,6 +297,7 @@ export default function BookingForm() {
         throw new Error(data.error || 'Submission failed');
       }
 
+      clearSavedForm();
       setStatus('success');
     } catch (err) {
       setStatus('error');
@@ -176,38 +307,38 @@ export default function BookingForm() {
 
   if (status === 'success') {
     return (
-      <div className="text-center py-16">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-5">
-          <CheckIcon className="w-10 h-10 text-green-600" />
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center py-16">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-5">
+            <CheckIcon className="w-10 h-10 text-green-600" />
+          </div>
+          <h3 className="text-2xl font-bold text-[var(--navy)] mb-3">
+            Request Submitted!
+          </h3>
+          <p className="text-[var(--steel)] mb-8 max-w-md mx-auto">
+            We&apos;ll review your request and reach out shortly to discuss next steps and scheduling.
+          </p>
+          <button
+            onClick={() => {
+              clearSavedForm();
+              setStatus('idle');
+              setStep(1);
+              setForm({ ...DEFAULT_FORM });
+              setEmailTouched(false);
+              setFiles([]);
+              setPreviews([]);
+            }}
+            className="text-[var(--accent)] font-semibold hover:underline"
+          >
+            Submit another request
+          </button>
         </div>
-        <h3 className="text-2xl font-bold text-[var(--navy)] mb-3">
-          Request Submitted!
-        </h3>
-        <p className="text-[var(--steel)] mb-8 max-w-md mx-auto">
-          We&apos;ll review your request and reach out shortly to discuss next steps and scheduling.
-        </p>
-        <button
-          onClick={() => {
-            setStatus('idle');
-            setStep(1);
-            setForm({
-              name: '', phone: '', email: '', address: '', city: '', zip: '',
-              serviceType: '', urgency: '', equipmentInfo: '',
-              issue: '', startedWhen: '', symptoms: [], membershipInterest: false,
-            });
-            setFiles([]);
-            setPreviews([]);
-          }}
-          className="text-[var(--accent)] font-semibold hover:underline"
-        >
-          Submit another request
-        </button>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="flex flex-col h-full min-h-0">
       {/* Progress bar */}
       <div className="mb-5 sm:mb-8">
         <div className="flex items-center justify-between mb-2 sm:mb-3">
@@ -246,262 +377,296 @@ export default function BookingForm() {
         </div>
       </div>
 
-      {/* Step 1: Contact */}
-      {step === 1 && (
-        <div className="space-y-3">
-          <h3 className="text-base sm:text-lg font-bold text-[var(--navy)]">Contact Information</h3>
-          <p className="text-sm text-[var(--steel)]">How can we reach you?</p>
+      {/* Step content — fills available space */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {/* Step 1: Contact */}
+        {step === 1 && (
+          <div className="space-y-3">
+            <h3 className="text-base sm:text-lg font-bold text-[var(--navy)]">Contact Information</h3>
+            <p className="text-sm text-[var(--steel)]">How can we reach you?</p>
 
-          <div>
-            <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Full Name *</label>
-            <input type="text" required value={form.name} onChange={e => update({ name: e.target.value })} className="form-input" placeholder="John Smith" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Phone *</label>
-              <input type="tel" required value={form.phone} onChange={e => update({ phone: e.target.value })} className="form-input" placeholder="(910) 555-0123" />
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Full Name *</label>
+              <input type="text" required value={form.name} onChange={e => update({ name: e.target.value })} className="form-input" placeholder="John Smith" autoComplete="name" />
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Phone *</label>
+                <input type="tel" required value={form.phone} onChange={e => update({ phone: e.target.value })} className="form-input" placeholder="(910) 555-0123" autoComplete="tel" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={e => update({ email: e.target.value })}
+                  onBlur={() => setEmailTouched(true)}
+                  className={`form-input ${emailTouched && !emailValid && form.email ? 'border-red-400 focus:ring-red-400' : ''}`}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
+                {emailTouched && form.email && !emailValid && (
+                  <p className="text-xs text-red-500 mt-1">Please enter a valid email address</p>
+                )}
+              </div>
+            </div>
+
             <div>
-              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Email *</label>
-              <input type="email" required value={form.email} onChange={e => update({ email: e.target.value })} className="form-input" placeholder="you@example.com" />
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Street Address *</label>
+              <input ref={addressRef} type="text" required value={form.address} onChange={e => update({ address: e.target.value })} className="form-input" placeholder="Start typing your address..." autoComplete="off" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">City *</label>
+                <input type="text" required value={form.city} onChange={e => update({ city: e.target.value })} className="form-input" placeholder="Tallahassee" autoComplete="address-level2" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Zip Code *</label>
+                <input type="text" required value={form.zip} onChange={e => update({ zip: e.target.value })} className="form-input" placeholder="32301" autoComplete="postal-code" />
+              </div>
             </div>
           </div>
+        )}
 
-          <div>
-            <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Street Address *</label>
-            <input type="text" required value={form.address} onChange={e => update({ address: e.target.value })} className="form-input" placeholder="123 Main St" />
-          </div>
+        {/* Step 2: Service Details */}
+        {step === 2 && (
+          <div className="space-y-3 sm:space-y-5">
+            <h3 className="text-base sm:text-lg font-bold text-[var(--navy)]">Service Details</h3>
+            <p className="text-sm text-[var(--steel)]">What do you need help with?</p>
 
-          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">City *</label>
-              <input type="text" required value={form.city} onChange={e => update({ city: e.target.value })} className="form-input" placeholder="Tallahassee" />
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Service type *</label>
+              <select value={form.serviceType} onChange={e => update({ serviceType: e.target.value })} className="form-input">
+                <option value="">Select a service...</option>
+                {SERVICE_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
+
             <div>
-              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Zip Code *</label>
-              <input type="text" required value={form.zip} onChange={e => update({ zip: e.target.value })} className="form-input" placeholder="32301" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Service Details */}
-      {step === 2 && (
-        <div className="space-y-3 sm:space-y-5">
-          <h3 className="text-base sm:text-lg font-bold text-[var(--navy)]">Service Details</h3>
-          <p className="text-sm text-[var(--steel)]">What do you need help with?</p>
-
-          <div>
-            <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Service type *</label>
-            <select value={form.serviceType} onChange={e => update({ serviceType: e.target.value })} className="form-input">
-              <option value="">Select a service...</option>
-              {SERVICE_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-[var(--navy)] mb-1.5">How urgent? *</label>
-            <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
-              {URGENCY_OPTIONS.map(opt => (
-                <label
-                  key={opt.value}
-                  className={`flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border cursor-pointer transition-colors ${
-                    form.urgency === opt.value
-                      ? 'border-[var(--accent)] bg-[var(--accent)]/5'
-                      : 'border-[var(--border)] hover:border-[var(--accent)]/50'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="urgency"
-                    value={opt.value}
-                    checked={form.urgency === opt.value}
-                    onChange={e => update({ urgency: e.target.value })}
-                    className="w-4 h-4 text-[var(--accent)] focus:ring-[var(--accent)]"
-                  />
-                  <div>
-                    <span className="text-sm font-semibold text-[var(--navy)]">{opt.label}</span>
-                    {opt.desc && <span className="hidden sm:inline text-sm text-[var(--steel)]"> &mdash; {opt.desc}</span>}
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Equipment Brand &amp; Model (optional)</label>
-            <input type="text" value={form.equipmentInfo} onChange={e => update({ equipmentInfo: e.target.value })} className="form-input" placeholder="e.g. Carrier 24ACC636A003" />
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Problem Description */}
-      {step === 3 && (
-        <div className="space-y-3 sm:space-y-5">
-          <h3 className="text-base sm:text-lg font-bold text-[var(--navy)]">Describe the Problem</h3>
-          <p className="text-sm text-[var(--steel)]">The more detail you provide, the faster we can help.</p>
-
-          <div>
-            <label className="block text-sm font-semibold text-[var(--navy)] mb-1">What&apos;s happening? *</label>
-            <textarea
-              required
-              rows={3}
-              value={form.issue}
-              onChange={e => update({ issue: e.target.value })}
-              className="form-input resize-none"
-              placeholder="AC not cooling, strange noises, water leak, etc."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-[var(--navy)] mb-1">When did it start?</label>
-            <select value={form.startedWhen} onChange={e => update({ startedWhen: e.target.value })} className="form-input">
-              <option value="">Select...</option>
-              {STARTED_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-[var(--navy)] mb-1.5">Have you noticed any of these?</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 max-h-[40vh] overflow-y-auto">
-              {SYMPTOM_OPTIONS.map(s => (
-                <label
-                  key={s}
-                  className={`flex items-center gap-2 p-2.5 sm:p-3 rounded-xl border cursor-pointer transition-colors ${
-                    form.symptoms.includes(s)
-                      ? 'border-[var(--accent)] bg-[var(--accent)]/5'
-                      : 'border-[var(--border)] hover:border-[var(--accent)]/50'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={form.symptoms.includes(s)}
-                    onChange={() => toggleSymptom(s)}
-                    className="w-4 h-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] flex-shrink-0"
-                  />
-                  <span className="text-xs sm:text-sm text-[var(--navy)]">{s}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 4: Upload */}
-      {step === 4 && (
-        <div className="space-y-3 sm:space-y-5">
-          <h3 className="text-base sm:text-lg font-bold text-[var(--navy)]">Photos &amp; Videos</h3>
-          <p className="text-sm text-[var(--steel)]">Upload up to 5 photos or videos of the issue (optional).</p>
-
-          {files.length < 5 && (
-            <div
-              onClick={() => fileRef.current?.click()}
-              onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('border-[var(--accent)]', 'bg-[var(--accent)]/5'); }}
-              onDragLeave={e => { e.currentTarget.classList.remove('border-[var(--accent)]', 'bg-[var(--accent)]/5'); }}
-              onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('border-[var(--accent)]', 'bg-[var(--accent)]/5'); addFiles(e.dataTransfer.files); }}
-              className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer border-2 border-dashed border-[var(--border)] rounded-2xl px-6 py-6 sm:py-10 hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-colors"
-            >
-              <UploadIcon className="w-8 h-8 text-[var(--steel)]" />
-              <span className="text-sm text-[var(--steel)] text-center">
-                Drag &amp; drop or click to upload<br />
-                <span className="text-xs">Images and videos accepted</span>
-              </span>
-            </div>
-          )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            onChange={e => { addFiles(e.target.files); if (fileRef.current) fileRef.current.value = ''; }}
-            className="hidden"
-          />
-
-          {files.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {files.map((f, i) => (
-                <div key={i} className="relative group rounded-xl border border-[var(--border)] overflow-hidden bg-gray-50">
-                  {previews[i] ? (
-                    <img src={previews[i]} alt={f.name} className="w-full h-28 object-cover" />
-                  ) : (
-                    <div className="w-full h-28 flex items-center justify-center">
-                      <span className="text-xs text-[var(--steel)] text-center px-2 truncate">{f.name}</span>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeFile(i)}
-                    className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-1.5">How urgent? *</label>
+              <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
+                {URGENCY_OPTIONS.map(opt => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border cursor-pointer transition-colors ${
+                      form.urgency === opt.value
+                        ? 'border-[var(--accent)] bg-[var(--accent)]/5'
+                        : 'border-[var(--border)] hover:border-[var(--accent)]/50'
+                    }`}
                   >
-                    <XIcon className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="px-2 py-1.5 text-xs text-[var(--steel)] truncate">{f.name}</div>
-                </div>
-              ))}
+                    <input
+                      type="radio"
+                      name="urgency"
+                      value={opt.value}
+                      checked={form.urgency === opt.value}
+                      onChange={e => update({ urgency: e.target.value })}
+                      className="w-4 h-4 text-[var(--accent)] focus:ring-[var(--accent)]"
+                    />
+                    <div>
+                      <span className="text-sm font-semibold text-[var(--navy)]">{opt.label}</span>
+                      {opt.desc && <span className="hidden sm:inline text-sm text-[var(--steel)]"> &mdash; {opt.desc}</span>}
+                    </div>
+                  </label>
+                ))}
+              </div>
             </div>
-          )}
 
-          <label className="flex items-start gap-3 cursor-pointer mt-4">
-            <input
-              type="checkbox"
-              checked={form.membershipInterest}
-              onChange={e => update({ membershipInterest: e.target.checked })}
-              className="mt-0.5 w-5 h-5 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)]"
-            />
-            <span className="text-sm text-[var(--steel)]">
-              I&apos;m interested in learning about priority membership plans
-            </span>
-          </label>
-        </div>
-      )}
-
-      {/* Step 5: Review */}
-      {step === 5 && (
-        <div className="space-y-3 sm:space-y-5">
-          <h3 className="text-base sm:text-lg font-bold text-[var(--navy)]">Review &amp; Submit</h3>
-          <p className="text-sm text-[var(--steel)]">Make sure everything looks good before submitting.</p>
-
-          <div className="space-y-4">
-            <ReviewBlock title="Contact Info" onEdit={() => setStep(1)}>
-              <p className="font-medium text-[var(--navy)]">{form.name}</p>
-              <p>{form.phone} &middot; {form.email}</p>
-              <p>{form.address}, {form.city} {form.zip}</p>
-            </ReviewBlock>
-
-            <ReviewBlock title="Service Details" onEdit={() => setStep(2)}>
-              <p><span className="font-medium text-[var(--navy)]">Type:</span> {form.serviceType}</p>
-              <p><span className="font-medium text-[var(--navy)]">Urgency:</span> {URGENCY_OPTIONS.find(o => o.value === form.urgency)?.label}</p>
-              {form.equipmentInfo && <p><span className="font-medium text-[var(--navy)]">Equipment:</span> {form.equipmentInfo}</p>}
-            </ReviewBlock>
-
-            <ReviewBlock title="Problem" onEdit={() => setStep(3)}>
-              <p className="text-[var(--navy)]">{form.issue}</p>
-              {form.startedWhen && <p><span className="font-medium text-[var(--navy)]">Started:</span> {form.startedWhen}</p>}
-              {form.symptoms.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {form.symptoms.map(s => (
-                    <span key={s} className="inline-block text-xs bg-[var(--accent)]/10 text-[var(--accent)] px-2 py-0.5 rounded-full">{s}</span>
-                  ))}
-                </div>
-              )}
-            </ReviewBlock>
-
-            <ReviewBlock title="Uploads" onEdit={() => setStep(4)}>
-              <p>{files.length > 0 ? `${files.length} file${files.length > 1 ? 's' : ''} attached` : 'No files attached'}</p>
-              {form.membershipInterest && <p className="text-[var(--accent)] text-xs font-medium mt-1">Interested in priority membership</p>}
-            </ReviewBlock>
+            <div>
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">Equipment Brand &amp; Model (optional)</label>
+              <input type="text" value={form.equipmentInfo} onChange={e => update({ equipmentInfo: e.target.value })} className="form-input" placeholder="e.g. Carrier 24ACC636A003" />
+            </div>
           </div>
+        )}
 
-          {status === 'error' && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2.5">
-              {errorMsg}
-            </p>
-          )}
-        </div>
-      )}
+        {/* Step 3: Select the Problem */}
+        {step === 3 && (
+          <div className="space-y-3 sm:space-y-5">
+            <h3 className="text-base sm:text-lg font-bold text-[var(--navy)]">Select the Problem</h3>
+            <p className="text-sm text-[var(--steel)]">Select all that apply.</p>
 
-      {/* Navigation */}
+            <div>
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-1.5">What&apos;s happening? *</label>
+              <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
+                {COMMON_PROBLEMS.map(p => {
+                  const isSelected = form.issues.includes(p);
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => toggleIssue(p)}
+                      className={`p-2.5 sm:p-3 rounded-xl border text-left text-xs sm:text-sm font-medium transition-colors ${
+                        isSelected
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/5 text-[var(--accent)]'
+                          : 'border-[var(--border)] text-[var(--navy)] hover:border-[var(--accent)]/50'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
+              {form.issues.includes('Other') && (
+                <textarea
+                  rows={2}
+                  value={form.otherIssue}
+                  onChange={e => update({ otherIssue: e.target.value })}
+                  className="form-input resize-none mt-2"
+                  placeholder="Describe the problem..."
+                  autoFocus
+                />
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-1">When did it start?</label>
+              <div
+                className="relative cursor-pointer"
+                onClick={() => dateRef.current?.showPicker?.()}
+              >
+                <input
+                  ref={dateRef}
+                  type="date"
+                  value={form.startedWhen}
+                  onChange={e => update({ startedWhen: e.target.value })}
+                  className="form-input w-full opacity-0 absolute inset-0 cursor-pointer"
+                />
+                <div className={`form-input flex items-center ${form.startedWhen ? 'text-[var(--navy)]' : 'text-gray-400'}`}>
+                  {form.startedWhen ? formatDateDisplay(form.startedWhen) : 'MM-DD-YYYY'}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-[var(--navy)] mb-1.5">Have you noticed any of these?</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 max-h-[40vh] overflow-y-auto">
+                {SYMPTOM_OPTIONS.map(s => (
+                  <label
+                    key={s}
+                    className={`flex items-center gap-2 p-2.5 sm:p-3 rounded-xl border cursor-pointer transition-colors ${
+                      form.symptoms.includes(s)
+                        ? 'border-[var(--accent)] bg-[var(--accent)]/5'
+                        : 'border-[var(--border)] hover:border-[var(--accent)]/50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.symptoms.includes(s)}
+                      onChange={() => toggleSymptom(s)}
+                      className="w-4 h-4 rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] flex-shrink-0"
+                    />
+                    <span className="text-xs sm:text-sm text-[var(--navy)]">{s}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Upload */}
+        {step === 4 && (
+          <div className="space-y-3 sm:space-y-5">
+            <h3 className="text-base sm:text-lg font-bold text-[var(--navy)]">Photos &amp; Videos</h3>
+            <p className="text-sm text-[var(--steel)]">Upload up to 5 photos or videos of the issue (optional).</p>
+
+            {files.length < 5 && (
+              <div
+                onClick={() => fileRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('border-[var(--accent)]', 'bg-[var(--accent)]/5'); }}
+                onDragLeave={e => { e.currentTarget.classList.remove('border-[var(--accent)]', 'bg-[var(--accent)]/5'); }}
+                onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('border-[var(--accent)]', 'bg-[var(--accent)]/5'); addFiles(e.dataTransfer.files); }}
+                className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer border-2 border-dashed border-[var(--border)] rounded-2xl px-6 py-6 sm:py-10 hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-colors"
+              >
+                <UploadIcon className="w-8 h-8 text-[var(--steel)]" />
+                <span className="text-sm text-[var(--steel)] text-center">
+                  Drag &amp; drop or click to upload<br />
+                  <span className="text-xs">Images and videos accepted</span>
+                </span>
+              </div>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              onChange={e => { addFiles(e.target.files); if (fileRef.current) fileRef.current.value = ''; }}
+              className="hidden"
+            />
+
+            {files.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {files.map((f, i) => (
+                  <div key={i} className="relative group rounded-xl border border-[var(--border)] overflow-hidden bg-gray-50">
+                    {previews[i] ? (
+                      <img src={previews[i]} alt={f.name} className="w-full h-28 object-cover" />
+                    ) : (
+                      <div className="w-full h-28 flex items-center justify-center">
+                        <span className="text-xs text-[var(--steel)] text-center px-2 truncate">{f.name}</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeFile(i)}
+                      className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                    >
+                      <XIcon className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="px-2 py-1.5 text-xs text-[var(--steel)] truncate">{f.name}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 5: Review */}
+        {step === 5 && (
+          <div className="space-y-3 sm:space-y-5">
+            <h3 className="text-base sm:text-lg font-bold text-[var(--navy)]">Review &amp; Submit</h3>
+            <p className="text-sm text-[var(--steel)]">Make sure everything looks good before submitting.</p>
+
+            <div className="space-y-4">
+              <ReviewBlock title="Contact Info" onEdit={() => setStep(1)}>
+                <p className="font-medium text-[var(--navy)]">{form.name}</p>
+                <p>{form.phone} &middot; {form.email}</p>
+                <p>{form.address}, {form.city} {form.zip}</p>
+              </ReviewBlock>
+
+              <ReviewBlock title="Service Details" onEdit={() => setStep(2)}>
+                <p><span className="font-medium text-[var(--navy)]">Type:</span> {form.serviceType}</p>
+                <p><span className="font-medium text-[var(--navy)]">Urgency:</span> {URGENCY_OPTIONS.find(o => o.value === form.urgency)?.label}</p>
+                {form.equipmentInfo && <p><span className="font-medium text-[var(--navy)]">Equipment:</span> {form.equipmentInfo}</p>}
+              </ReviewBlock>
+
+              <ReviewBlock title="Problem" onEdit={() => setStep(3)}>
+                <p className="text-[var(--navy)]">{getIssueString()}</p>
+                {form.startedWhen && <p><span className="font-medium text-[var(--navy)]">Started:</span> {formatDateDisplay(form.startedWhen)}</p>}
+                {form.symptoms.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {form.symptoms.map(s => (
+                      <span key={s} className="inline-block text-xs bg-[var(--accent)]/10 text-[var(--accent)] px-2 py-0.5 rounded-full">{s}</span>
+                    ))}
+                  </div>
+                )}
+              </ReviewBlock>
+
+              <ReviewBlock title="Uploads" onEdit={() => setStep(4)}>
+                <p>{files.length > 0 ? `${files.length} file${files.length > 1 ? 's' : ''} attached` : 'No files attached'}</p>
+              </ReviewBlock>
+            </div>
+
+            {status === 'error' && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2.5">
+                {errorMsg}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Navigation — always at bottom */}
       <div className="flex items-center justify-between mt-5 sm:mt-8 pt-4 sm:pt-5 border-t border-[var(--border)]">
         {step > 1 ? (
           <button

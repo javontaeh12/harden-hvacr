@@ -10,7 +10,7 @@ import {
   SYSTEM_HEALTH_COMPONENTS,
   DEFAULT_HEALTH_COMPONENTS,
   HEALTH_RATINGS,
-  AREA_SUGGESTIONS,
+  getAreaSuggestions,
   EQUIPMENT_TYPES,
   QUOTE_ITEM_CATEGORIES,
 } from '@/lib/hvac-data';
@@ -31,6 +31,8 @@ import {
   FileText,
   Receipt,
   ExternalLink,
+  Clock,
+  Zap,
 } from 'lucide-react';
 import type {
   ServiceReportMedia,
@@ -39,6 +41,7 @@ import type {
   UpgradeItem,
   QuoteOption,
   QuoteOptionItem,
+  ServiceUnit,
 } from '@/types';
 
 declare global {
@@ -73,20 +76,47 @@ interface EquipmentOption {
 interface ServiceReportBuilderProps {
   reportId?: string | null;
   initialCustomerId?: string | null;
+  workOrderId?: string;
   onClose: () => void;
   onSaved: () => void;
 }
 
 const STEPS = [
+  'Job Summary',
   'Equipment',
-  'Warranty',
-  'Problem',
-  'System Health',
-  'Other Uploads',
+  'Uploads',
   'Upgrades',
   'Quote Options',
   'Review',
   'Payment',
+];
+
+type EquipmentSubTab = 'info' | 'problem' | 'health';
+
+function createDefaultUnit(): ServiceUnit {
+  return {
+    id: crypto.randomUUID(),
+    equipment_info: { ...EMPTY_EQUIPMENT_INFO },
+    warranty_info: { ...EMPTY_WARRANTY_INFO },
+    problem_found: '',
+    problem_details: { severity: 'medium', symptoms: [], areas_affected: [] },
+    health_ratings: {},
+    health_notes: {},
+    health_extras: {},
+  };
+}
+
+const UPGRADE_CATALOG: UpgradeItem[] = [
+  { name: 'UV Light Air Purifier', price: 650, priority: 'medium', benefits: ['Kills mold & bacteria', 'Improves indoor air quality', 'Reduces allergens'] },
+  { name: 'Smart Thermostat', price: 350, priority: 'medium', benefits: ['Energy savings up to 23%', 'Remote temperature control', 'Learning schedule'] },
+  { name: 'Surge Protector', price: 250, priority: 'high', benefits: ['Protects equipment from power surges', 'Extends system lifespan', 'Prevents costly repairs'] },
+  { name: 'Duct Sealing', price: 800, priority: 'medium', benefits: ['Reduces energy loss up to 30%', 'Improves airflow', 'Better temperature consistency'] },
+  { name: 'Air Scrubber', price: 1200, priority: 'medium', benefits: ['Removes 99% of contaminants', 'Reduces odors', 'ActivePure technology'] },
+  { name: 'Hard Start Kit', price: 175, priority: 'high', benefits: ['Reduces compressor wear', 'Lower startup amps', 'Extends compressor life'] },
+  { name: 'Float Switch', price: 85, priority: 'high', benefits: ['Prevents water damage', 'Auto shutoff on overflow', 'Required by code in many areas'] },
+  { name: 'Maintenance Plan', price: 199, priority: 'low', benefits: ['2 tune-ups per year', 'Priority scheduling', '15% parts discount'] },
+  { name: 'Capacitor Upgrade', price: 125, priority: 'high', benefits: ['Prevents motor failure', 'Improves efficiency', 'Turbo rated for longer life'] },
+  { name: 'Condensate Pump', price: 225, priority: 'medium', benefits: ['Reliable drainage', 'Quiet operation', 'Prevents water damage'] },
 ];
 
 const REFRIGERANT_TYPES = ['R-410A', 'R-22', 'R-32', 'R-134a', 'R-407C', 'R-404A', 'Other'];
@@ -138,10 +168,10 @@ const EMPTY_PROBLEM_DETAILS: { severity: 'low' | 'medium' | 'high' | 'critical';
   areas_affected: [],
 };
 
-function createEmptyQuoteOption(label: string): QuoteOption {
+function createEmptyQuoteOption(label: string, num: number): QuoteOption {
   return {
     label,
-    name: '',
+    name: `Option ${num}`,
     items: [{ description: '', category: 'service', quantity: 1, unit_price: 0, total: 0 }],
     subtotal: 0,
     is_recommended: false,
@@ -154,7 +184,7 @@ function createEmptyUpgrade(): UpgradeItem {
 
 type PaymentMethod = 'card' | 'cash' | 'check' | 'invoice';
 
-export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onSaved }: ServiceReportBuilderProps) {
+export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId, onClose, onSaved }: ServiceReportBuilderProps) {
   const { groupId, profile } = useAuth();
   const [step, setStep] = useState(1);
   const [visitedSteps, setVisitedSteps] = useState<Set<number>>(new Set([1]));
@@ -169,18 +199,65 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   const [customerId, setCustomerId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
-  const [equipmentId, setEquipmentId] = useState('');
-  const [equipmentInfo, setEquipmentInfo] = useState(EMPTY_EQUIPMENT_INFO);
-  const [warrantyInfo, setWarrantyInfo] = useState(EMPTY_WARRANTY_INFO);
-  const [problemFound, setProblemFound] = useState('');
-  const [problemDetails, setProblemDetails] = useState(EMPTY_PROBLEM_DETAILS);
-  const [healthRatings, setHealthRatings] = useState<Record<string, number>>({});
-  const [healthNotes, setHealthNotes] = useState<Record<string, string>>({});
-  const [healthExtras, setHealthExtras] = useState<Record<string, Record<string, unknown>>>({});
+
+  // Multi-unit state
+  const [units, setUnits] = useState<ServiceUnit[]>([createDefaultUnit()]);
+  const [activeUnitIdx, setActiveUnitIdx] = useState(0);
+  const [equipmentSubTab, setEquipmentSubTab] = useState<EquipmentSubTab>('info');
+
+  // Convenience accessors for active unit
+  const activeUnit = units[activeUnitIdx] || units[0];
+  const equipmentInfo = activeUnit.equipment_info;
+  const warrantyInfo = activeUnit.warranty_info;
+  const problemFound = activeUnit.problem_found;
+  const problemDetails = activeUnit.problem_details;
+  const healthRatings = activeUnit.health_ratings;
+  const healthNotes = activeUnit.health_notes;
+  const healthExtras = activeUnit.health_extras;
+
+  const updateUnit = (idx: number, updates: Partial<ServiceUnit>) => {
+    setUnits(prev => prev.map((u, i) => i === idx ? { ...u, ...updates } : u));
+  };
+  const setEquipmentInfo = (info: typeof EMPTY_EQUIPMENT_INFO) => updateUnit(activeUnitIdx, { equipment_info: info });
+  const setWarrantyInfo = (info: typeof EMPTY_WARRANTY_INFO) => updateUnit(activeUnitIdx, { warranty_info: info });
+  const setProblemFound = (val: string) => updateUnit(activeUnitIdx, { problem_found: val });
+  const setProblemDetails = (val: typeof EMPTY_PROBLEM_DETAILS | ((prev: typeof EMPTY_PROBLEM_DETAILS) => typeof EMPTY_PROBLEM_DETAILS)) => {
+    if (typeof val === 'function') {
+      setUnits(prev => prev.map((u, i) => i === activeUnitIdx ? { ...u, problem_details: val(u.problem_details) } : u));
+    } else {
+      updateUnit(activeUnitIdx, { problem_details: val });
+    }
+  };
+  const setHealthRatings = (val: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => {
+    if (typeof val === 'function') {
+      setUnits(prev => prev.map((u, i) => i === activeUnitIdx ? { ...u, health_ratings: val(u.health_ratings) } : u));
+    } else {
+      updateUnit(activeUnitIdx, { health_ratings: val });
+    }
+  };
+  const setHealthNotes = (val: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => {
+    if (typeof val === 'function') {
+      setUnits(prev => prev.map((u, i) => i === activeUnitIdx ? { ...u, health_notes: val(u.health_notes) } : u));
+    } else {
+      updateUnit(activeUnitIdx, { health_notes: val });
+    }
+  };
+  const setHealthExtras = (val: Record<string, Record<string, unknown>> | ((prev: Record<string, Record<string, unknown>>) => Record<string, Record<string, unknown>>)) => {
+    if (typeof val === 'function') {
+      setUnits(prev => prev.map((u, i) => i === activeUnitIdx ? { ...u, health_extras: val(u.health_extras) } : u));
+    } else {
+      updateUnit(activeUnitIdx, { health_extras: val });
+    }
+  };
+
+  // Legacy single-unit compat
+  const equipmentId = activeUnit.equipment_id || '';
+  const setEquipmentId = (id: string) => updateUnit(activeUnitIdx, { equipment_id: id });
+
   const [healthMedia, setHealthMedia] = useState<Record<string, { file: File; type: 'photo' | 'video' }[]>>({});
   const healthMediaInputRef = useRef<HTMLInputElement>(null);
   const [activeHealthMediaKey, setActiveHealthMediaKey] = useState<string>('');
-  const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([createEmptyQuoteOption('A')]);
+  const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([createEmptyQuoteOption('A', 1)]);
   const [selectedOptionIdx, setSelectedOptionIdx] = useState<number | null>(null);
   const [expandedOption, setExpandedOption] = useState<number | null>(0);
   const [upgrades, setUpgrades] = useState<UpgradeItem[]>([]);
@@ -207,13 +284,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   const [invoiceNote, setInvoiceNote] = useState('');
 
   // Warranty lookup state
-  const [warrantyPopupBrand, setWarrantyPopupBrand] = useState<string | null>(null);
+  const [warrantyLookupBrand, setWarrantyLookupBrand] = useState<string | null>(null);
   const [warrantyScreenshot, setWarrantyScreenshot] = useState<File | null>(null);
   const [warrantyScreenshotUrl, setWarrantyScreenshotUrl] = useState<string | null>(null);
   const [savingScreenshot, setSavingScreenshot] = useState(false);
   const warrantyScreenshotRef = useRef<HTMLInputElement>(null);
-  const warrantyPopupRef = useRef<Window | null>(null);
-  const warrantyRepositionRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Media state
   const [media, setMedia] = useState<ServiceReportMedia[]>([]);
@@ -253,21 +328,18 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     return () => {
       if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
     };
-  }, [savedReportId, customerId, equipmentInfo, warrantyInfo, problemFound, problemDetails, healthRatings, healthNotes, healthExtras, quoteOptions, selectedOptionIdx, upgrades, techNotes]);
+  }, [savedReportId, customerId, units, quoteOptions, selectedOptionIdx, upgrades, techNotes]);
 
-  // Cleanup warranty popup on unmount
+  // Cleanup warranty lookup on unmount
   useEffect(() => {
     return () => {
-      if (warrantyRepositionRef.current) clearInterval(warrantyRepositionRef.current);
-      if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
-        warrantyPopupRef.current.close();
-      }
+      setWarrantyLookupBrand(null);
     };
   }, []);
 
   // Square SDK loading
   useEffect(() => {
-    if (step !== 9 || paymentMethod !== 'card') return;
+    if (step !== 7 || paymentMethod !== 'card') return;
     const existingScript = document.querySelector('script[src*="squarecdn"]');
     if (existingScript) {
       initSquare();
@@ -317,15 +389,26 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     setCustomerId(data.customer_id || '');
     setCustomerName(data.customer_name || '');
     setCustomerAddress(data.customer_address || '');
-    setEquipmentId(data.equipment_id || '');
-    setEquipmentInfo(data.equipment_info || EMPTY_EQUIPMENT_INFO);
-    setWarrantyInfo(data.warranty_info || EMPTY_WARRANTY_INFO);
-    setProblemFound(data.problem_found || '');
-    setProblemDetails(data.problem_details || EMPTY_PROBLEM_DETAILS);
-    setHealthRatings(data.health_ratings || {});
-    setHealthNotes(data.health_notes || {});
-    setHealthExtras(data.health_extras || {});
-    setQuoteOptions(data.quote_options?.length ? data.quote_options : [createEmptyQuoteOption('A')]);
+
+    // Load units (multi-unit or backwards-compat single unit)
+    const savedUnits = data.equipment_info?._units;
+    if (savedUnits && Array.isArray(savedUnits) && savedUnits.length > 0) {
+      setUnits(savedUnits);
+    } else {
+      const unit = createDefaultUnit();
+      unit.equipment_info = data.equipment_info || { ...EMPTY_EQUIPMENT_INFO };
+      unit.warranty_info = data.warranty_info || { ...EMPTY_WARRANTY_INFO };
+      unit.problem_found = data.problem_found || '';
+      unit.problem_details = data.problem_details || { ...EMPTY_PROBLEM_DETAILS };
+      unit.health_ratings = data.health_ratings || {};
+      unit.health_notes = data.health_notes || {};
+      unit.health_extras = data.health_extras || {};
+      unit.equipment_id = data.equipment_id || undefined;
+      setUnits([unit]);
+    }
+    setActiveUnitIdx(0);
+
+    setQuoteOptions(data.quote_options?.length ? data.quote_options : [createEmptyQuoteOption('A', 1)]);
     setSelectedOptionIdx(data.selected_option_idx ?? null);
     setUpgrades(data.upgrades || []);
     setTechNotes(data.tech_notes || '');
@@ -341,26 +424,29 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     if (mediaData) setMedia(mediaData);
   };
 
-  const getFormData = useCallback(() => ({
-    customer_id: customerId || null,
-    equipment_id: equipmentId || null,
-    created_by: profile?.id || null,
-    group_id: groupId!,
-    equipment_info: equipmentInfo,
-    warranty_info: warrantyInfo,
-    problem_found: problemFound,
-    problem_details: problemDetails,
-    health_ratings: healthRatings,
-    health_notes: healthNotes,
-    health_extras: healthExtras,
-    quote_options: quoteOptions,
-    selected_option_idx: selectedOptionIdx,
-    upgrades,
-    tech_notes: techNotes || null,
-    customer_name: customerName || null,
-    customer_address: customerAddress || null,
-    service_date: serviceDate,
-  }), [customerId, equipmentId, profile, groupId, equipmentInfo, warrantyInfo, problemFound, problemDetails, healthRatings, healthNotes, healthExtras, quoteOptions, selectedOptionIdx, upgrades, techNotes, customerName, customerAddress, serviceDate]);
+  const getFormData = useCallback(() => {
+    const primaryUnit = units[0];
+    return {
+      customer_id: customerId || null,
+      equipment_id: primaryUnit?.equipment_id || null,
+      created_by: profile?.id || null,
+      group_id: groupId!,
+      equipment_info: { ...primaryUnit.equipment_info, _units: units },
+      warranty_info: primaryUnit.warranty_info,
+      problem_found: primaryUnit.problem_found,
+      problem_details: primaryUnit.problem_details,
+      health_ratings: primaryUnit.health_ratings,
+      health_notes: primaryUnit.health_notes,
+      health_extras: primaryUnit.health_extras,
+      quote_options: quoteOptions,
+      selected_option_idx: selectedOptionIdx,
+      upgrades,
+      tech_notes: techNotes || null,
+      customer_name: customerName || null,
+      customer_address: customerAddress || null,
+      service_date: serviceDate,
+    };
+  }, [customerId, units, profile, groupId, quoteOptions, selectedOptionIdx, upgrades, techNotes, customerName, customerAddress, serviceDate]);
 
   const saveDraft = async (silent = false) => {
     if (!groupId) return;
@@ -476,13 +562,14 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     setEquipmentId(id);
     const eq = equipmentOptions.find((e) => e.id === id);
     if (eq) {
-      setEquipmentInfo((prev) => ({
+      const prev = units[activeUnitIdx].equipment_info;
+      setEquipmentInfo({
         ...prev,
         equipment_type: eq.equipment_type || prev.equipment_type,
         make: eq.make || prev.make,
         model: eq.model || prev.model,
         serial_number: eq.serial_number || prev.serial_number,
-      }));
+      });
       if (eq.make) setBrandSearch(eq.make);
     }
   };
@@ -490,9 +577,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   // Quote option helpers
   const addQuoteOption = () => {
     const labels = 'ABCDEFGHIJ';
-    const next = labels[quoteOptions.length] || `${quoteOptions.length + 1}`;
-    setQuoteOptions([...quoteOptions, createEmptyQuoteOption(next)]);
-    setExpandedOption(quoteOptions.length);
+    const nextIdx = quoteOptions.length;
+    const next = labels[nextIdx] || `${nextIdx + 1}`;
+    setQuoteOptions([...quoteOptions, createEmptyQuoteOption(next, nextIdx + 1)]);
+    setExpandedOption(nextIdx);
   };
 
   const removeQuoteOption = (idx: number) => {
@@ -721,21 +809,19 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   // Step completion checks
   const isStepComplete = (s: number): boolean => {
     switch (s) {
-      case 1: return !!(equipmentInfo.equipment_type && equipmentInfo.make);
-      case 2: return true; // warranty is always optional
-      case 3: return !!(problemFound.trim());
-      case 4: return Object.keys(healthRatings).length > 0 || Object.keys(healthExtras).length > 0;
-      case 5: return media.length > 0 || pendingFiles.length > 0;
-      case 6: return true; // upgrades are optional
-      case 7: return quoteOptions.some(o => o.items.some(i => i.description.trim()));
+      case 1: return !!(customerId); // Job Summary: customer selected
+      case 2: return units.some(u => !!(u.equipment_info.equipment_type && u.equipment_info.make)); // Equipment
+      case 3: return media.length > 0 || pendingFiles.length > 0; // Uploads
+      case 4: return true; // Upgrades are optional
+      case 5: return quoteOptions.some(o => o.items.some(i => i.description.trim())); // Quote Options
       default: return false;
     }
   };
 
   // Review/Payment availability
   const hasMedia = media.length > 0 || pendingFiles.length > 0;
-  const allStepsVisited = [1, 2, 3, 4, 5, 6, 7].every(s => visitedSteps.has(s));
-  const reviewAvailable = selectedOptionIdx !== null && hasMedia && allStepsVisited;
+  const allStepsVisited = [1, 2, 3, 4, 5].every(s => visitedSteps.has(s));
+  const reviewAvailable = selectedOptionIdx !== null && allStepsVisited;
   const paymentAvailable = !!signatureDataUrl;
 
   // Step navigation
@@ -744,9 +830,9 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       await saveDraft();
     }
     const nextStep = step + 1;
-    if (nextStep === 8 && !reviewAvailable) return;
-    if (nextStep === 9 && !paymentAvailable) return;
-    navigateToStep(Math.min(nextStep, 9));
+    if (nextStep === 6 && !reviewAvailable) return;
+    if (nextStep === 7 && !paymentAvailable) return;
+    navigateToStep(Math.min(nextStep, 7));
   };
 
   const goBack = () => navigateToStep(Math.max(step - 1, 1));
@@ -768,16 +854,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
   // === STEP RENDERERS ===
 
-  const renderStep1 = () => {
-    const filteredBrands = HVAC_BRANDS.filter(b =>
-      b.toLowerCase().includes(brandSearch.toLowerCase())
-    ).slice(0, 8);
-
+  // Step 1: Job Summary
+  const renderJobSummary = () => {
+    const selectedCustomer = customers.find(c => c.id === customerId);
     return (
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-navy">Equipment Information</h3>
+        <h3 className="text-lg font-semibold text-navy">Job Summary</h3>
 
-        {/* Customer selector */}
         <div>
           <label className="block text-sm font-medium text-navy mb-1">Customer</label>
           <select
@@ -792,10 +875,73 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
           </select>
         </div>
 
+        {selectedCustomer && (
+          <div className="bg-accent-light border border-accent/20 rounded-lg p-3 text-sm space-y-1">
+            <p className="text-navy"><span className="text-accent font-medium">Customer:</span> {selectedCustomer.full_name}</p>
+            {selectedCustomer.phone && <p className="text-navy/80"><span className="text-accent font-medium">Phone:</span> {selectedCustomer.phone}</p>}
+            {selectedCustomer.address && <p className="text-navy/80"><span className="text-accent font-medium">Address:</span> {selectedCustomer.address}</p>}
+          </div>
+        )}
+
+        <Input
+          label="Service Date"
+          type="date"
+          value={serviceDate}
+          onChange={(e) => setServiceDate(e.target.value)}
+        />
+
+        <div>
+          <label className="block text-sm font-medium text-navy mb-1">Tech Notes (internal)</label>
+          <textarea
+            value={techNotes}
+            onChange={(e) => setTechNotes(e.target.value)}
+            rows={4}
+            placeholder="Internal notes for your team..."
+            className="block w-full rounded-lg border border-border px-3 py-2 text-black placeholder-gray-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+        </div>
+
+        {/* Units overview */}
+        <div className="border-t border-border pt-4">
+          <h4 className="text-sm font-medium text-navy mb-2 flex items-center gap-2">
+            <Clock className="w-4 h-4 text-accent" /> Units on this Job
+          </h4>
+          <div className="space-y-2">
+            {units.map((u, idx) => (
+              <div key={u.id} className="flex items-center justify-between p-3 bg-ice rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-navy">Unit {idx + 1}</p>
+                  <p className="text-xs text-steel">
+                    {u.equipment_info.equipment_type || 'No type'} {u.equipment_info.make ? `- ${u.equipment_info.make}` : ''} {u.equipment_info.model || ''}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setActiveUnitIdx(idx); navigateToStep(2); }}
+                  className="text-xs text-accent font-medium hover:underline"
+                >
+                  Edit
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Step 2: Equipment (with sub-tabs and multi-unit)
+  const renderEquipmentUnitInfo = () => {
+    const filteredBrands = HVAC_BRANDS.filter(b =>
+      b.toLowerCase().includes(brandSearch.toLowerCase())
+    ).slice(0, 8);
+
+    return (
+      <div className="space-y-4">
         {/* Existing equipment selector */}
         {filteredEquipment.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-navy mb-1">Existing Equipment (optional)</label>
+            <label className="block text-sm font-medium text-navy mb-1">Load from Profile (optional)</label>
             <select
               value={equipmentId}
               onChange={(e) => handleEquipmentSelect(e.target.value)}
@@ -826,7 +972,6 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
             </select>
           </div>
 
-          {/* Make with brand autocomplete */}
           <div className="relative">
             <Input
               label="Make"
@@ -901,261 +1046,157 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
             ))}
           </div>
         </div>
-      </div>
-    );
-  };
 
-  const renderStep2 = () => {
-    const selectedCustomer = customers.find(c => c.id === customerId);
-
-    return (
-      <div className="space-y-4">
-        {/* Customer & Equipment reference bar */}
-        {(selectedCustomer || equipmentInfo.make) && (
-          <div className="bg-accent-light border border-accent/20 rounded-lg p-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
-            {selectedCustomer && (
-              <span className="text-navy"><span className="text-accent font-medium">Customer:</span> {selectedCustomer.full_name}</span>
-            )}
-            {equipmentInfo.make && (
-              <span className="text-navy"><span className="text-accent font-medium">Make:</span> {equipmentInfo.make}</span>
-            )}
-            {equipmentInfo.model && (
-              <span className="text-navy"><span className="text-accent font-medium">Model:</span> {equipmentInfo.model}</span>
-            )}
-            {equipmentInfo.serial_number && (
-              <span className="text-navy"><span className="text-accent font-medium">Serial:</span> {equipmentInfo.serial_number}</span>
-            )}
-          </div>
-        )}
-
-        <h3 className="text-lg font-semibold text-navy">Warranty Information</h3>
-
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-navy">Has Warranty?</label>
-          <button
-            type="button"
-            onClick={() => setWarrantyInfo({ ...warrantyInfo, has_warranty: !warrantyInfo.has_warranty })}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              warrantyInfo.has_warranty ? 'bg-ember' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                warrantyInfo.has_warranty ? 'translate-x-6' : 'translate-x-1'
+        {/* Warranty section inline */}
+        <div className="border-t border-border pt-4 space-y-4">
+          <h4 className="text-base font-semibold text-navy">Warranty</h4>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-navy">Has Warranty?</label>
+            <button
+              type="button"
+              onClick={() => setWarrantyInfo({ ...warrantyInfo, has_warranty: !warrantyInfo.has_warranty })}
+              className={`relative inline-flex h-6 w-11 items-center rounded transition-colors ${
+                warrantyInfo.has_warranty ? 'bg-ember' : 'bg-gray-300'
               }`}
-            />
-          </button>
-        </div>
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-sm bg-white transition-transform ${
+                warrantyInfo.has_warranty ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
 
-        {warrantyInfo.has_warranty && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-navy mb-1">Warranty Type</label>
-              <select
-                value={warrantyInfo.warranty_type}
-                onChange={(e) => setWarrantyInfo({ ...warrantyInfo, warranty_type: e.target.value })}
-                className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-              >
-                <option value="">Select type...</option>
-                <option value="manufacturer">Manufacturer</option>
-                <option value="extended">Extended</option>
-                <option value="home_warranty">Home Warranty</option>
-                <option value="labor">Labor Only</option>
-                <option value="parts">Parts Only</option>
-                <option value="full">Full Coverage</option>
-              </select>
-            </div>
-            <Input
-              label="Provider"
-              value={warrantyInfo.provider}
-              onChange={(e) => setWarrantyInfo({ ...warrantyInfo, provider: e.target.value })}
-            />
-            <Input
-              label="Expiration Date"
-              type="date"
-              value={warrantyInfo.expiration}
-              onChange={(e) => setWarrantyInfo({ ...warrantyInfo, expiration: e.target.value })}
-            />
-            <Input
-              label="Coverage Details"
-              value={warrantyInfo.coverage}
-              onChange={(e) => setWarrantyInfo({ ...warrantyInfo, coverage: e.target.value })}
-            />
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-navy mb-1">Warranty Notes</label>
-              <textarea
-                value={warrantyInfo.notes}
-                onChange={(e) => setWarrantyInfo({ ...warrantyInfo, notes: e.target.value })}
-                rows={3}
-                className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-            </div>
-
-            {/* Warranty Proof Screenshot */}
-            <div className="sm:col-span-2 space-y-2">
-              <label className="block text-sm font-medium text-navy">Warranty Proof</label>
-              <p className="text-xs text-steel">Screenshot the warranty confirmation and upload it here. It will be saved to the customer&apos;s equipment profile.</p>
-              <input
-                ref={warrantyScreenshotRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setWarrantyScreenshot(file);
-                    setWarrantyScreenshotUrl(null);
-                  }
-                  e.target.value = '';
-                }}
-              />
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => warrantyScreenshotRef.current?.click()}>
-                  <Camera className="w-3.5 h-3.5 mr-1.5" /> {warrantyScreenshot ? 'Replace Screenshot' : 'Upload Screenshot'}
-                </Button>
-                {warrantyScreenshot && !warrantyScreenshotUrl && (
-                  <Button size="sm" onClick={saveWarrantyScreenshot} isLoading={savingScreenshot}>
-                    <Save className="w-3.5 h-3.5 mr-1.5" /> Save to Profile
-                  </Button>
-                )}
-                {warrantyScreenshotUrl && (
-                  <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" /> Saved
-                  </span>
-                )}
-              </div>
-              {warrantyScreenshot && (
-                <div className="relative inline-block">
-                  <img src={URL.createObjectURL(warrantyScreenshot)} alt="Warranty proof" className="max-h-40 rounded-lg border border-border" />
-                  <button
-                    type="button"
-                    onClick={() => { setWarrantyScreenshot(null); setWarrantyScreenshotUrl(null); }}
-                    className="absolute top-1 right-1 p-0.5 bg-red-500 text-white rounded-full"
+          {warrantyInfo.has_warranty && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-navy mb-1">Warranty Type</label>
+                  <select
+                    value={warrantyInfo.warranty_type}
+                    onChange={(e) => setWarrantyInfo({ ...warrantyInfo, warranty_type: e.target.value })}
+                    className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                   >
-                    <X className="w-3 h-3" />
-                  </button>
+                    <option value="">Select type...</option>
+                    <option value="manufacturer">Manufacturer</option>
+                    <option value="extended">Extended</option>
+                    <option value="home_warranty">Home Warranty</option>
+                    <option value="labor">Labor Only</option>
+                    <option value="parts">Parts Only</option>
+                    <option value="full">Full Coverage</option>
+                  </select>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Warranty Lookup Section */}
-        <div className="border-t border-border pt-4 space-y-3">
-          <label className="block text-sm font-medium text-navy">Warranty Lookup</label>
-          <p className="text-xs text-steel">Opens the warranty site in a floating window pinned to the bottom of your screen. Look up the warranty, then screenshot and upload the proof above.</p>
-          <div className="flex flex-wrap gap-2">
-            {WARRANTY_LINKS.map(link => {
-              const isOpen = warrantyPopupBrand === link.brand;
-              return (
-                <button
-                  key={link.brand}
-                  type="button"
-                  onClick={() => {
-                    // Close existing popup if same brand
-                    if (isOpen && warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
-                      warrantyPopupRef.current.close();
-                      setWarrantyPopupBrand(null);
-                      warrantyPopupRef.current = null;
-                      if (warrantyRepositionRef.current) clearInterval(warrantyRepositionRef.current);
-                      return;
-                    }
-                    // Close any existing popup
-                    if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
-                      warrantyPopupRef.current.close();
-                    }
-                    if (warrantyRepositionRef.current) clearInterval(warrantyRepositionRef.current);
-
-                    // Open popup window — pinned to bottom of screen
-                    const screenH = window.screen.availHeight;
-                    const screenW = window.screen.availWidth;
-                    const popupH = Math.round(screenH * 0.45);
-                    const popupW = Math.min(screenW, 600);
-                    const popupTop = screenH - popupH;
-                    const popupLeft = Math.round((screenW - popupW) / 2);
-                    const popup = window.open(
-                      link.url,
-                      'warranty_lookup',
-                      `width=${popupW},height=${popupH},top=${popupTop},left=${popupLeft},scrollbars=yes,resizable=yes`
-                    );
-                    warrantyPopupRef.current = popup;
-                    setWarrantyPopupBrand(link.brand);
-
-                    // Continuously reposition popup to bottom of screen (keeps it floating there)
-                    const repositionInterval = setInterval(() => {
-                      if (!popup || popup.closed) {
-                        clearInterval(repositionInterval);
-                        setWarrantyPopupBrand(null);
-                        warrantyPopupRef.current = null;
-                        warrantyRepositionRef.current = null;
-                        return;
-                      }
-                      try {
-                        popup.moveTo(popupLeft, popupTop);
-                        popup.resizeTo(popupW, popupH);
-                      } catch {
-                        // moveTo/resizeTo may be blocked by browser — that's ok
-                      }
-                    }, 2000);
-                    warrantyRepositionRef.current = repositionInterval;
-                  }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                    isOpen
-                      ? 'border-green-600 bg-green-600 text-white'
-                      : 'border-border bg-white text-accent hover:bg-accent-light'
-                  }`}
-                >
-                  {link.brand}
-                  {isOpen ? <Check className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />}
-                </button>
-              );
-            })}
-          </div>
-
-          {warrantyPopupBrand && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2">
-              <p className="text-sm text-green-700 font-medium flex items-center gap-2">
-                <Check className="w-4 h-4" /> {warrantyPopupBrand} warranty site is open (pinned to bottom)
-              </p>
-              <p className="text-xs text-green-600">
-                Use the floating window to verify warranty. When done, take a screenshot and upload it above to save the proof.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
-                      warrantyPopupRef.current.focus();
-                    }
-                  }}
-                  className="text-xs text-green-700 font-medium hover:underline"
-                >
-                  Bring to front
-                </button>
-                <span className="text-green-300">|</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
-                      warrantyPopupRef.current.close();
-                    }
-                    setWarrantyPopupBrand(null);
-                    warrantyPopupRef.current = null;
-                    if (warrantyRepositionRef.current) clearInterval(warrantyRepositionRef.current);
-                  }}
-                  className="text-xs text-red-600 font-medium hover:underline"
-                >
-                  Close popup
-                </button>
+                <Input label="Provider" value={warrantyInfo.provider} onChange={(e) => setWarrantyInfo({ ...warrantyInfo, provider: e.target.value })} />
+                <Input label="Expiration Date" type="date" value={warrantyInfo.expiration} onChange={(e) => setWarrantyInfo({ ...warrantyInfo, expiration: e.target.value })} />
+                <Input label="Coverage Details" value={warrantyInfo.coverage} onChange={(e) => setWarrantyInfo({ ...warrantyInfo, coverage: e.target.value })} />
               </div>
-            </div>
+
+              {/* Warranty Lookup Links */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-navy">Warranty Lookup</label>
+                <div className="flex flex-wrap gap-2">
+                  {WARRANTY_LINKS.map(link => (
+                    <a key={link.brand} href={link.url} target="_blank" rel="noopener noreferrer"
+                      onClick={() => setWarrantyLookupBrand(link.brand)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                        warrantyLookupBrand === link.brand
+                          ? 'border-green-600 bg-green-600 text-white'
+                          : 'border-border bg-white text-accent hover:bg-accent-light'
+                      }`}
+                    >
+                      {link.brand}
+                      {warrantyLookupBrand === link.brand ? <Check className="w-3 h-3" /> : <ExternalLink className="w-3 h-3" />}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
         </div>
       </div>
     );
   };
 
-  const renderStep3 = () => (
+  // Equipment step wrapper with unit selector + sub-tabs
+  const renderEquipmentStep = () => {
+    const subTabs: { id: EquipmentSubTab; label: string }[] = [
+      { id: 'info', label: 'Unit Info' },
+      { id: 'problem', label: 'Problem Found' },
+      { id: 'health', label: 'System Health' },
+    ];
+
+    return (
+      <div className="space-y-4">
+        {/* Unit selector bar */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {units.map((u, idx) => (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => { setActiveUnitIdx(idx); setBrandSearch(u.equipment_info.make || ''); }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap border transition-colors ${
+                activeUnitIdx === idx
+                  ? 'bg-ember text-white border-ember'
+                  : 'bg-white text-navy/80 border-border hover:bg-ice'
+              }`}
+            >
+              Unit {idx + 1}
+              {u.equipment_info.make ? ` - ${u.equipment_info.make}` : ''}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              const newUnit = createDefaultUnit();
+              setUnits(prev => [...prev, newUnit]);
+              setActiveUnitIdx(units.length);
+              setEquipmentSubTab('info');
+              setBrandSearch('');
+            }}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-accent border border-dashed border-accent/40 hover:bg-accent-light whitespace-nowrap"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Unit
+          </button>
+          {units.length > 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (units.length <= 1) return;
+                setUnits(prev => prev.filter((_, i) => i !== activeUnitIdx));
+                setActiveUnitIdx(Math.max(0, activeUnitIdx - 1));
+              }}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium text-red-500 border border-red-200 hover:bg-red-50 whitespace-nowrap"
+            >
+              <Trash2 className="w-3 h-3" /> Remove
+            </button>
+          )}
+        </div>
+
+        {/* Sub-tab bar */}
+        <div className="flex gap-1 bg-ice p-1 rounded-lg">
+          {subTabs.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setEquipmentSubTab(tab.id)}
+              className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                equipmentSubTab === tab.id
+                  ? 'bg-white text-accent shadow-sm'
+                  : 'text-steel hover:text-navy'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sub-tab content */}
+        {equipmentSubTab === 'info' && renderEquipmentUnitInfo()}
+        {equipmentSubTab === 'problem' && renderProblemFound()}
+        {equipmentSubTab === 'health' && renderSystemHealth()}
+      </div>
+    );
+  };
+
+  const renderProblemFound = () => (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-navy">Problem Found</h3>
 
@@ -1237,7 +1278,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
           </div>
         )}
         <div className="flex flex-wrap gap-1.5">
-          {AREA_SUGGESTIONS
+          {getAreaSuggestions(equipmentInfo.equipment_type)
             .filter(a => !problemDetails.areas_affected.includes(a))
             .map(area => (
               <button
@@ -1254,7 +1295,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     </div>
   );
 
-  const renderStep4 = () => {
+  const renderSystemHealth = () => {
     const eqType = equipmentInfo.equipment_type;
     const components = SYSTEM_HEALTH_COMPONENTS[eqType] || DEFAULT_HEALTH_COMPONENTS;
 
@@ -1616,17 +1657,51 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     </div>
   );
 
-  const renderStep6 = () => (
+  const renderUpgrades = () => (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-navy">Upgrades & Add-ons</h3>
+      <h3 className="text-lg font-semibold text-navy">Upgrades & Add-ons</h3>
+
+      {/* Upgrade Catalog */}
+      <div className="space-y-2">
+        <p className="text-sm text-steel">Tap to add recommended upgrades:</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {UPGRADE_CATALOG.filter(cat => !upgrades.some(u => u.name === cat.name)).map(cat => {
+            const priorityColors: Record<string, string> = {
+              low: 'border-l-green-400',
+              medium: 'border-l-yellow-400',
+              high: 'border-l-red-400',
+            };
+            return (
+              <button
+                key={cat.name}
+                type="button"
+                onClick={() => setUpgrades([...upgrades, { ...cat, benefits: [...cat.benefits] }])}
+                className={`text-left p-3 rounded-lg border border-border ${priorityColors[cat.priority]} border-l-4 hover:bg-ice transition-colors`}
+              >
+                <div className="flex justify-between items-start">
+                  <span className="text-sm font-medium text-navy">{cat.name}</span>
+                  <span className="text-sm font-bold text-accent ml-2">{formatCurrency(cat.price)}</span>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {cat.benefits.slice(0, 2).map(b => (
+                    <span key={b} className="text-[10px] px-1.5 py-0.5 bg-ice text-steel rounded">{b}</span>
+                  ))}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-4 flex items-center justify-between">
+        <h4 className="text-sm font-semibold text-navy">Added Upgrades ({upgrades.length})</h4>
         <Button size="sm" variant="outline" onClick={addUpgrade}>
-          <Plus className="w-4 h-4 mr-1" /> Add Upgrade
+          <Plus className="w-4 h-4 mr-1" /> Custom
         </Button>
       </div>
 
       {upgrades.length === 0 && (
-        <p className="text-sm text-steel text-center py-8">No upgrades added. Click &ldquo;Add Upgrade&rdquo; to suggest accessories or add-ons.</p>
+        <p className="text-sm text-steel text-center py-4">No upgrades added yet. Tap a suggestion above or add a custom one.</p>
       )}
 
       {upgrades.map((upg, idx) => (
@@ -1875,7 +1950,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     </div>
   );
 
-  const renderStep8 = () => {
+  const renderReview = () => {
     const selectedCustomer = customers.find((c) => c.id === customerId);
     const selectedOpt = selectedOptionIdx !== null ? quoteOptions[selectedOptionIdx] : null;
 
@@ -1883,91 +1958,49 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       <div className="space-y-6">
         <h3 className="text-lg font-semibold text-navy">Review & Submit</h3>
 
-        {/* Equipment Summary */}
-        <Card>
-          <CardContent>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-navy">Equipment</h4>
-              <button type="button" onClick={() => navigateToStep(1)} className="text-sm text-accent hover:underline">Edit</button>
-            </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              {selectedCustomer && <p className="col-span-2 text-navy/80"><span className="text-steel">Customer:</span> {selectedCustomer.full_name}</p>}
-              {equipmentInfo.equipment_type && <p className="text-navy/80"><span className="text-steel">Type:</span> {equipmentInfo.equipment_type}</p>}
-              {equipmentInfo.make && <p className="text-navy/80"><span className="text-steel">Make:</span> {equipmentInfo.make}</p>}
-              {equipmentInfo.model && <p className="text-navy/80"><span className="text-steel">Model:</span> {equipmentInfo.model}</p>}
-              {equipmentInfo.serial_number && <p className="text-navy/80"><span className="text-steel">Serial:</span> {equipmentInfo.serial_number}</p>}
-              {equipmentInfo.condition && <p className="text-navy/80"><span className="text-steel">Condition:</span> {equipmentInfo.condition}</p>}
-              {equipmentInfo.tonnage && <p className="text-navy/80"><span className="text-steel">Tonnage:</span> {equipmentInfo.tonnage}</p>}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Warranty Summary */}
-        <Card>
-          <CardContent>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-navy">Warranty</h4>
-              <button type="button" onClick={() => navigateToStep(2)} className="text-sm text-accent hover:underline">Edit</button>
-            </div>
-            <p className="text-sm text-navy/80">
-              {warrantyInfo.has_warranty
-                ? `${warrantyInfo.warranty_type || 'Yes'} - ${warrantyInfo.provider || 'Unknown provider'}${warrantyInfo.expiration ? ` (Exp: ${warrantyInfo.expiration})` : ''}`
-                : 'No warranty'}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Problem Summary */}
-        <Card>
-          <CardContent>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-navy">Problem Found</h4>
-              <button type="button" onClick={() => navigateToStep(3)} className="text-sm text-accent hover:underline">Edit</button>
-            </div>
-            <p className="text-sm text-navy/80">{problemFound || 'No description'}</p>
-            <div className="flex flex-wrap gap-1 mt-2">
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                problemDetails.severity === 'critical' ? 'bg-red-100 text-red-700' :
-                problemDetails.severity === 'high' ? 'bg-orange-100 text-orange-700' :
-                problemDetails.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                'bg-green-100 text-green-700'
-              }`}>
-                {problemDetails.severity}
-              </span>
-              {problemDetails.symptoms.map((s) => (
-                <span key={s} className="px-2 py-0.5 rounded-full text-xs bg-ice text-navy/80">{s}</span>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* System Health Summary */}
-        <Card>
-          <CardContent>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-navy">System Health</h4>
-              <button type="button" onClick={() => navigateToStep(4)} className="text-sm text-accent hover:underline">Edit</button>
-            </div>
-            {Object.keys(healthRatings).length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {Object.entries(healthRatings).map(([key, val]) => {
-                  const rating = HEALTH_RATINGS.find(r => r.value === val);
-                  const eqType = equipmentInfo.equipment_type;
-                  const comps = SYSTEM_HEALTH_COMPONENTS[eqType] || DEFAULT_HEALTH_COMPONENTS;
-                  const comp = comps.find(c => c.key === key);
-                  return (
-                    <div key={key} className="text-sm">
-                      <span className="text-steel">{comp?.label || key}:</span>{' '}
-                      <span className="font-medium">{rating?.label || val}</span>
-                    </div>
-                  );
-                })}
+        {/* Customer Summary */}
+        {selectedCustomer && (
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-navy">Customer</h4>
+                <button type="button" onClick={() => navigateToStep(1)} className="text-sm text-accent hover:underline">Edit</button>
               </div>
-            ) : (
-              <p className="text-sm text-steel">No ratings recorded</p>
-            )}
-          </CardContent>
-        </Card>
+              <p className="text-sm text-navy/80">{selectedCustomer.full_name}</p>
+              {selectedCustomer.address && <p className="text-xs text-steel">{selectedCustomer.address}</p>}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Units Summary */}
+        {units.map((u, idx) => (
+          <Card key={u.id}>
+            <CardContent>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-navy">Unit {idx + 1}: {u.equipment_info.equipment_type || 'Unknown'}</h4>
+                <button type="button" onClick={() => { setActiveUnitIdx(idx); navigateToStep(2); }} className="text-sm text-accent hover:underline">Edit</button>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                {u.equipment_info.make && <p className="text-navy/80"><span className="text-steel">Make:</span> {u.equipment_info.make}</p>}
+                {u.equipment_info.model && <p className="text-navy/80"><span className="text-steel">Model:</span> {u.equipment_info.model}</p>}
+                {u.equipment_info.condition && <p className="text-navy/80"><span className="text-steel">Condition:</span> {u.equipment_info.condition}</p>}
+                {u.warranty_info.has_warranty && <p className="text-navy/80"><span className="text-steel">Warranty:</span> {u.warranty_info.warranty_type || 'Yes'}</p>}
+              </div>
+              {u.problem_found && (
+                <div className="mt-2 pt-2 border-t border-border/30">
+                  <p className="text-xs text-steel font-medium">Problem:</p>
+                  <p className="text-sm text-navy/80 line-clamp-2">{u.problem_found}</p>
+                  <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                    u.problem_details.severity === 'critical' ? 'bg-red-100 text-red-700' :
+                    u.problem_details.severity === 'high' ? 'bg-orange-100 text-orange-700' :
+                    u.problem_details.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-green-100 text-green-700'
+                  }`}>{u.problem_details.severity}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
 
         {/* Photos Summary */}
         {media.length > 0 && (
@@ -1975,7 +2008,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
             <CardContent>
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-medium text-navy">Uploads ({media.length})</h4>
-                <button type="button" onClick={() => navigateToStep(5)} className="text-sm text-accent hover:underline">Edit</button>
+                <button type="button" onClick={() => navigateToStep(3)} className="text-sm text-accent hover:underline">Edit</button>
               </div>
               <div className="flex gap-2 overflow-x-auto">
                 {media.slice(0, 6).map((m) => (
@@ -1988,9 +2021,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                   </div>
                 ))}
                 {media.length > 6 && (
-                  <div className="w-20 h-20 bg-ice rounded flex items-center justify-center text-sm text-steel">
-                    +{media.length - 6}
-                  </div>
+                  <div className="w-20 h-20 bg-ice rounded flex items-center justify-center text-sm text-steel">+{media.length - 6}</div>
                 )}
               </div>
             </CardContent>
@@ -2003,7 +2034,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
             <CardContent>
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-medium text-navy">Upgrades ({upgrades.length})</h4>
-                <button type="button" onClick={() => navigateToStep(6)} className="text-sm text-accent hover:underline">Edit</button>
+                <button type="button" onClick={() => navigateToStep(4)} className="text-sm text-accent hover:underline">Edit</button>
               </div>
               <div className="space-y-1">
                 {upgrades.map((u, i) => (
@@ -2023,21 +2054,17 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
             <CardContent>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-xs">
-                    {selectedOpt.label}
-                  </span>
+                  <span className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-xs">{selectedOpt.label}</span>
                   <h4 className="font-medium text-navy">Selected: {selectedOpt.name || 'Unnamed Option'}</h4>
                 </div>
-                <button type="button" onClick={() => navigateToStep(7)} className="text-sm text-accent hover:underline">Edit</button>
+                <button type="button" onClick={() => navigateToStep(5)} className="text-sm text-accent hover:underline">Edit</button>
               </div>
               <div className="space-y-1.5">
                 {selectedOpt.items.map((item, i) => (
                   <div key={i} className="flex justify-between text-sm">
                     <div className="flex-1">
                       <span className="text-navy/80">{item.description || 'No description'}</span>
-                      <span className="text-steel/60 ml-2 text-xs">
-                        {QUOTE_ITEM_CATEGORIES.find(c => c.key === item.category)?.label || item.category}
-                      </span>
+                      <span className="text-steel/60 ml-2 text-xs">{QUOTE_ITEM_CATEGORIES.find(c => c.key === item.category)?.label || item.category}</span>
                     </div>
                     <div className="text-right flex-shrink-0 ml-4">
                       <span className="text-steel text-xs">{item.quantity} x {formatCurrency(item.unit_price)}</span>
@@ -2052,25 +2079,6 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
             </CardContent>
           </Card>
         )}
-
-        {/* Tech Notes */}
-        <div>
-          <label className="block text-sm font-medium text-navy mb-1">Tech Notes (internal)</label>
-          <textarea
-            value={techNotes}
-            onChange={(e) => setTechNotes(e.target.value)}
-            rows={3}
-            placeholder="Internal notes for your team..."
-            className="block w-full rounded-lg border border-border px-3 py-2 text-black placeholder-gray-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-          />
-        </div>
-
-        <Input
-          label="Service Date"
-          type="date"
-          value={serviceDate}
-          onChange={(e) => setServiceDate(e.target.value)}
-        />
 
         {/* Signature */}
         <div className="space-y-3">
@@ -2115,7 +2123,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
             <Check className="w-4 h-4 mr-2" /> Generate Report
           </Button>
           <Button
-            onClick={() => { if (paymentAvailable) navigateToStep(9); }}
+            onClick={() => { if (paymentAvailable) navigateToStep(7); }}
             disabled={!paymentAvailable}
           >
             <CreditCard className="w-4 h-4 mr-2" /> Move to Payment
@@ -2275,15 +2283,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
   const renderCurrentStep = () => {
     switch (step) {
-      case 1: return renderStep1();
-      case 2: return renderStep2();
-      case 3: return renderStep3();
-      case 4: return renderStep4();
-      case 5: return renderStep5();
-      case 6: return renderStep6();
-      case 7: return renderStep7();
-      case 8: return renderStep8();
-      case 9: return renderStep9();
+      case 1: return renderJobSummary();
+      case 2: return renderEquipmentStep();
+      case 3: return renderStep5(); // Uploads
+      case 4: return renderUpgrades();
+      case 5: return renderStep7(); // Quote Options
+      case 6: return renderReview();
+      case 7: return renderStep9(); // Payment
       default: return null;
     }
   };
@@ -2304,15 +2310,14 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
         </Button>
       </div>
 
-      {/* Progress Bar */}
-      <div className="px-4 py-3 border-b border-border bg-navy/5 flex-shrink-0 overflow-x-auto">
+      {/* Step Navigation Bar */}
+      <div className="px-4 py-2.5 border-b border-border bg-navy/5 flex-shrink-0 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
           {STEPS.map((s, i) => {
             const stepNum = i + 1;
             const isActive = step === stepNum;
-            const isCompleted = step > stepNum;
-            const isReview = stepNum === 8;
-            const isPayment = stepNum === 9;
+            const isReview = stepNum === 6;
+            const isPayment = stepNum === 7;
             const canClick = isPayment ? paymentAvailable : isReview ? reviewAvailable : true;
             return (
               <button
@@ -2320,7 +2325,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                 type="button"
                 onClick={() => canClick && navigateToStep(stepNum)}
                 disabled={!canClick}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1 px-2 py-1.5 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
                   isActive
                     ? 'bg-ember text-white'
                     : (isReview && !reviewAvailable) || (isPayment && !paymentAvailable)
@@ -2332,8 +2337,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                     : 'bg-ice text-steel hover:bg-ice/80 cursor-pointer'
                 }`}
               >
-                {isCompleted ? <Check className="w-3 h-3" /> : <span>{stepNum}</span>}
-                <span className="hidden sm:inline">{s}</span>
+                {visitedSteps.has(stepNum) && isStepComplete(stepNum) && !isActive && <Check className="w-3 h-3" />}
+                {s}
               </button>
             );
           })}
@@ -2346,15 +2351,15 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       </div>
 
       {/* Footer Navigation */}
-      {step < 8 && (
+      {step < 6 && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
           <Button variant="ghost" onClick={goBack} disabled={step === 1}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <span className="text-sm text-steel">Step {step} of 9</span>
-          {step === 7 && !reviewAvailable ? (
+          <span className="text-sm text-steel">Step {step} of 7</span>
+          {step === 5 && !reviewAvailable ? (
             <div className="text-xs text-amber-600 font-medium max-w-[140px] text-right">
-              {!hasMedia ? 'Upload photos first' : selectedOptionIdx === null ? 'Select a quote option' : 'Visit all tabs to continue'}
+              {selectedOptionIdx === null ? 'Select a quote option' : 'Visit all tabs to continue'}
             </div>
           ) : (
             <Button onClick={goNext}>
@@ -2363,61 +2368,25 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
           )}
         </div>
       )}
-      {step === 8 && (
+      {step === 6 && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
           <Button variant="ghost" onClick={goBack}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <span className="text-sm text-steel">Step 8 of 9</span>
+          <span className="text-sm text-steel">Step 6 of 7</span>
           <div />
         </div>
       )}
-      {step === 9 && (
+      {step === 7 && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
           <Button variant="ghost" onClick={goBack}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <span className="text-sm text-steel">Step 9 of 9</span>
+          <span className="text-sm text-steel">Step 7 of 7</span>
           <div />
         </div>
       )}
 
-      {/* Floating warranty popup indicator — visible on all steps */}
-      {warrantyPopupBrand && (
-        <div className="fixed bottom-0 left-0 right-0 z-[60] bg-green-600 text-white px-4 py-2 flex items-center justify-between shadow-lg">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <ExternalLink className="w-4 h-4" />
-            <span>{warrantyPopupBrand} warranty — floating at bottom</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
-                  warrantyPopupRef.current.focus();
-                }
-              }}
-              className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full font-medium transition"
-            >
-              Show
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (warrantyPopupRef.current && !warrantyPopupRef.current.closed) {
-                  warrantyPopupRef.current.close();
-                }
-                setWarrantyPopupBrand(null);
-                warrantyPopupRef.current = null;
-                if (warrantyRepositionRef.current) clearInterval(warrantyRepositionRef.current);
-              }}
-              className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full font-medium transition"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

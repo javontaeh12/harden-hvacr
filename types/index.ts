@@ -339,6 +339,40 @@ export interface UpgradeItem {
   benefits: string[];
 }
 
+// Service Unit (multi-unit support)
+export interface ServiceUnit {
+  id: string;
+  equipment_info: {
+    equipment_type: string;
+    make: string;
+    model: string;
+    serial_number: string;
+    location: string;
+    age: string;
+    tonnage: string;
+    refrigerant_type: string;
+    condition: string;
+  };
+  warranty_info: {
+    has_warranty: boolean;
+    warranty_type: string;
+    provider: string;
+    expiration: string;
+    coverage: string;
+    notes: string;
+  };
+  problem_found: string;
+  problem_details: {
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    symptoms: string[];
+    areas_affected: string[];
+  };
+  health_ratings: Record<string, number>;
+  health_notes: Record<string, string>;
+  health_extras: Record<string, Record<string, unknown>>;
+  equipment_id?: string;
+}
+
 // Quote Option Types (for new service report builder)
 export interface QuoteOptionItem {
   description: string;
@@ -346,6 +380,7 @@ export interface QuoteOptionItem {
   quantity: number;
   unit_price: number;
   total: number;
+  unit_index?: number;
 }
 
 export interface QuoteOption {
