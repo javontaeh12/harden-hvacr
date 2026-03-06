@@ -206,6 +206,14 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   const [checkNumber, setCheckNumber] = useState('');
   const [invoiceNote, setInvoiceNote] = useState('');
 
+  // Warranty lookup state
+  const [warrantyLookupUrl, setWarrantyLookupUrl] = useState<string | null>(null);
+  const [warrantyIframeBlocked, setWarrantyIframeBlocked] = useState(false);
+  const [warrantyScreenshot, setWarrantyScreenshot] = useState<File | null>(null);
+  const [warrantyScreenshotUrl, setWarrantyScreenshotUrl] = useState<string | null>(null);
+  const [savingScreenshot, setSavingScreenshot] = useState(false);
+  const warrantyScreenshotRef = useRef<HTMLInputElement>(null);
+
   // Media state
   const [media, setMedia] = useState<ServiceReportMedia[]>([]);
   const [pendingFiles, setPendingFiles] = useState<{ file: File; caption: string; type: 'photo' | 'video' }[]>([]);
@@ -412,6 +420,45 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       [compKey]: { ...(prev[compKey] || {}), [field]: value },
     }));
   };
+
+  // Warranty screenshot save
+  const saveWarrantyScreenshot = async () => {
+    if (!warrantyScreenshot || !groupId) return;
+    setSavingScreenshot(true);
+    try {
+      const supabase = createClient();
+      const ext = warrantyScreenshot.name.split('.').pop();
+      const fileName = `warranty-${Date.now()}.${ext}`;
+      const filePath = `warranty-proofs/${customerId || 'unknown'}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage.from('service-reports').upload(filePath, warrantyScreenshot);
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('service-reports').getPublicUrl(filePath);
+      setWarrantyScreenshotUrl(urlData.publicUrl);
+
+      // Save to customer equipment if we have IDs
+      if (customerId && equipmentId) {
+        await supabase
+          .from('customer_equipment')
+          .update({ warranty_proof_url: urlData.publicUrl } as Record<string, unknown>)
+          .eq('id', equipmentId);
+      }
+    } catch (err) {
+      console.error('warranty screenshot save error:', err);
+    } finally {
+      setSavingScreenshot(false);
+    }
+  };
+
+  // Warranty lookup links
+  const WARRANTY_LINKS = [
+    { brand: 'Carrier', url: 'https://www.carrier.com/residential/en/us/warranty-lookup/' },
+    { brand: 'Goodman', url: 'https://www.goodmanmfg.com/warranty-lookup' },
+    { brand: 'Lennox', url: 'https://www.lennox.com/residential/owners/assistance/warranty/' },
+    { brand: 'Rheem', url: 'https://rheem.registermyunit.com/en-US/warranty/brand?brand=rheem' },
+    { brand: 'York', url: 'https://wtyprod.jci.com/jci/warranty/public/warrantyreg/index.html' },
+  ];
 
   // Equipment selection handler
   const handleEquipmentSelect = (id: string) => {
@@ -847,99 +894,236 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
     );
   };
 
-  const renderStep2 = () => (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">Warranty Information</h3>
+  const renderStep2 = () => {
+    const selectedCustomer = customers.find(c => c.id === customerId);
 
-      <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700">Has Warranty?</label>
-        <button
-          type="button"
-          onClick={() => setWarrantyInfo({ ...warrantyInfo, has_warranty: !warrantyInfo.has_warranty })}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            warrantyInfo.has_warranty ? 'bg-blue-600' : 'bg-gray-300'
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-              warrantyInfo.has_warranty ? 'translate-x-6' : 'translate-x-1'
+    return (
+      <div className="space-y-4">
+        {/* Customer & Equipment reference bar */}
+        {(selectedCustomer || equipmentInfo.make) && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            {selectedCustomer && (
+              <span className="text-blue-900"><span className="text-blue-500 font-medium">Customer:</span> {selectedCustomer.full_name}</span>
+            )}
+            {equipmentInfo.make && (
+              <span className="text-blue-900"><span className="text-blue-500 font-medium">Make:</span> {equipmentInfo.make}</span>
+            )}
+            {equipmentInfo.model && (
+              <span className="text-blue-900"><span className="text-blue-500 font-medium">Model:</span> {equipmentInfo.model}</span>
+            )}
+            {equipmentInfo.serial_number && (
+              <span className="text-blue-900"><span className="text-blue-500 font-medium">Serial:</span> {equipmentInfo.serial_number}</span>
+            )}
+          </div>
+        )}
+
+        <h3 className="text-lg font-semibold text-gray-900">Warranty Information</h3>
+
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium text-gray-700">Has Warranty?</label>
+          <button
+            type="button"
+            onClick={() => setWarrantyInfo({ ...warrantyInfo, has_warranty: !warrantyInfo.has_warranty })}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              warrantyInfo.has_warranty ? 'bg-blue-600' : 'bg-gray-300'
             }`}
-          />
-        </button>
-      </div>
-
-      {warrantyInfo.has_warranty && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Warranty Type</label>
-            <select
-              value={warrantyInfo.warranty_type}
-              onChange={(e) => setWarrantyInfo({ ...warrantyInfo, warranty_type: e.target.value })}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">Select type...</option>
-              <option value="manufacturer">Manufacturer</option>
-              <option value="extended">Extended</option>
-              <option value="home_warranty">Home Warranty</option>
-              <option value="labor">Labor Only</option>
-              <option value="parts">Parts Only</option>
-              <option value="full">Full Coverage</option>
-            </select>
-          </div>
-          <Input
-            label="Provider"
-            value={warrantyInfo.provider}
-            onChange={(e) => setWarrantyInfo({ ...warrantyInfo, provider: e.target.value })}
-          />
-          <Input
-            label="Expiration Date"
-            type="date"
-            value={warrantyInfo.expiration}
-            onChange={(e) => setWarrantyInfo({ ...warrantyInfo, expiration: e.target.value })}
-          />
-          <Input
-            label="Coverage Details"
-            value={warrantyInfo.coverage}
-            onChange={(e) => setWarrantyInfo({ ...warrantyInfo, coverage: e.target.value })}
-          />
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Warranty Notes</label>
-            <textarea
-              value={warrantyInfo.notes}
-              onChange={(e) => setWarrantyInfo({ ...warrantyInfo, notes: e.target.value })}
-              rows={3}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                warrantyInfo.has_warranty ? 'translate-x-6' : 'translate-x-1'
+              }`}
             />
-          </div>
+          </button>
+        </div>
 
-          {/* Warranty Lookup Quick Links */}
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Warranty Lookup</label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { brand: 'Carrier', url: 'https://www.carrier.com/residential/en/us/warranty-lookup/' },
-                { brand: 'Goodman', url: 'https://www.goodmanmfg.com/warranty-lookup' },
-                { brand: 'Lennox', url: 'https://www.lennox.com/residential/owners/assistance/warranty/' },
-                { brand: 'Rheem', url: 'https://rheem.registermyunit.com/en-US/warranty/brand?brand=rheem' },
-                { brand: 'York', url: 'https://wtyprod.jci.com/jci/warranty/public/warrantyreg/index.html' },
-              ].map(link => (
-                <a
-                  key={link.brand}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
-                >
-                  {link.brand}
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              ))}
+        {warrantyInfo.has_warranty && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Warranty Type</label>
+              <select
+                value={warrantyInfo.warranty_type}
+                onChange={(e) => setWarrantyInfo({ ...warrantyInfo, warranty_type: e.target.value })}
+                className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">Select type...</option>
+                <option value="manufacturer">Manufacturer</option>
+                <option value="extended">Extended</option>
+                <option value="home_warranty">Home Warranty</option>
+                <option value="labor">Labor Only</option>
+                <option value="parts">Parts Only</option>
+                <option value="full">Full Coverage</option>
+              </select>
+            </div>
+            <Input
+              label="Provider"
+              value={warrantyInfo.provider}
+              onChange={(e) => setWarrantyInfo({ ...warrantyInfo, provider: e.target.value })}
+            />
+            <Input
+              label="Expiration Date"
+              type="date"
+              value={warrantyInfo.expiration}
+              onChange={(e) => setWarrantyInfo({ ...warrantyInfo, expiration: e.target.value })}
+            />
+            <Input
+              label="Coverage Details"
+              value={warrantyInfo.coverage}
+              onChange={(e) => setWarrantyInfo({ ...warrantyInfo, coverage: e.target.value })}
+            />
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Warranty Notes</label>
+              <textarea
+                value={warrantyInfo.notes}
+                onChange={(e) => setWarrantyInfo({ ...warrantyInfo, notes: e.target.value })}
+                rows={3}
+                className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Warranty Proof Screenshot */}
+            <div className="sm:col-span-2 space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Warranty Proof</label>
+              <p className="text-xs text-gray-500">Screenshot the warranty confirmation and upload it here. It will be saved to the customer&apos;s equipment profile.</p>
+              <input
+                ref={warrantyScreenshotRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setWarrantyScreenshot(file);
+                    setWarrantyScreenshotUrl(null);
+                  }
+                  e.target.value = '';
+                }}
+              />
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" onClick={() => warrantyScreenshotRef.current?.click()}>
+                  <Camera className="w-3.5 h-3.5 mr-1.5" /> {warrantyScreenshot ? 'Replace Screenshot' : 'Upload Screenshot'}
+                </Button>
+                {warrantyScreenshot && !warrantyScreenshotUrl && (
+                  <Button size="sm" onClick={saveWarrantyScreenshot} isLoading={savingScreenshot}>
+                    <Save className="w-3.5 h-3.5 mr-1.5" /> Save to Profile
+                  </Button>
+                )}
+                {warrantyScreenshotUrl && (
+                  <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> Saved
+                  </span>
+                )}
+              </div>
+              {warrantyScreenshot && (
+                <div className="relative inline-block">
+                  <img src={URL.createObjectURL(warrantyScreenshot)} alt="Warranty proof" className="max-h-40 rounded-lg border border-gray-200" />
+                  <button
+                    type="button"
+                    onClick={() => { setWarrantyScreenshot(null); setWarrantyScreenshotUrl(null); }}
+                    className="absolute top-1 right-1 p-0.5 bg-red-500 text-white rounded-full"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
+        )}
+
+        {/* Warranty Lookup Section */}
+        <div className="border-t border-gray-200 pt-4 space-y-3">
+          <label className="block text-sm font-medium text-gray-700">Warranty Lookup</label>
+          <p className="text-xs text-gray-500">Open a manufacturer&apos;s warranty site to verify coverage. Use the customer &amp; equipment info above to look up the warranty, then screenshot the result.</p>
+          <div className="flex flex-wrap gap-2">
+            {WARRANTY_LINKS.map(link => (
+              <button
+                key={link.brand}
+                type="button"
+                onClick={() => {
+                  if (warrantyLookupUrl === link.url) {
+                    setWarrantyLookupUrl(null);
+                    setWarrantyIframeBlocked(false);
+                  } else {
+                    setWarrantyLookupUrl(link.url);
+                    setWarrantyIframeBlocked(false);
+                  }
+                }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                  warrantyLookupUrl === link.url
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-gray-200 bg-white text-blue-600 hover:bg-blue-50'
+                }`}
+              >
+                {link.brand}
+                <ExternalLink className="w-3 h-3" />
+              </button>
+            ))}
+          </div>
+
+          {/* Embedded warranty site */}
+          {warrantyLookupUrl && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 truncate flex-1">{warrantyLookupUrl}</span>
+                <div className="flex items-center gap-2 ml-2">
+                  <a
+                    href={warrantyLookupUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline flex items-center gap-1 whitespace-nowrap"
+                  >
+                    Open in new tab <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => { setWarrantyLookupUrl(null); setWarrantyIframeBlocked(false); }}
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {warrantyIframeBlocked ? (
+                <div className="border border-orange-200 bg-orange-50 rounded-lg p-4 text-center space-y-2">
+                  <p className="text-sm text-orange-700 font-medium">This site doesn&apos;t allow embedded viewing</p>
+                  <p className="text-xs text-orange-600">Open the site in a new tab, verify the warranty, then screenshot and upload the proof above.</p>
+                  <a
+                    href={warrantyLookupUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-orange-600 text-white text-sm font-medium hover:bg-orange-700"
+                  >
+                    Open {WARRANTY_LINKS.find(l => l.url === warrantyLookupUrl)?.brand || 'Site'} <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-gray-200 overflow-hidden" style={{ height: '40vh', minHeight: '300px' }}>
+                  <iframe
+                    src={warrantyLookupUrl}
+                    className="w-full h-full"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                    onError={() => setWarrantyIframeBlocked(true)}
+                    onLoad={(e) => {
+                      // Check if iframe loaded or was blocked
+                      try {
+                        const iframe = e.target as HTMLIFrameElement;
+                        // If we can't access contentDocument, it might be blocked
+                        if (iframe.contentDocument === null) {
+                          setWarrantyIframeBlocked(true);
+                        }
+                      } catch {
+                        // Cross-origin — iframe loaded but we can't access it (which is fine)
+                      }
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   const renderStep3 = () => (
     <div className="space-y-4">
