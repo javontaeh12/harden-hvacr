@@ -1,10 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies, headers } from 'next/headers';
 import { AuthProvider } from '@/components/AuthProvider';
-import { Sidebar } from '@/components/Sidebar';
-import { AdminHeader } from '@/components/AdminHeader';
-import { MobileBottomNav } from '@/components/MobileBottomNav';
-import { SessionRefresh } from '@/components/SessionRefresh';
+import AdminLayoutShell from '@/components/AdminLayoutShell';
 import { Profile, OrganizationGroup } from '@/types';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -42,13 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <AuthProvider initialProfile={initialProfile} initialGroup={initialGroup}>
       <div className="min-h-screen bg-gray-50">
-        <Sidebar />
-        <AdminHeader />
-        <main className="lg:pl-64 pt-14 pb-16 lg:pb-0">
-          <div className="px-3 py-2 sm:p-4 lg:p-8">{children}</div>
-        </main>
-        <MobileBottomNav />
-        <SessionRefresh />
+        <AdminLayoutShell>{children}</AdminLayoutShell>
       </div>
     </AuthProvider>
   );

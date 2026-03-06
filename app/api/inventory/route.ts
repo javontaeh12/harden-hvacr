@@ -1,13 +1,27 @@
 import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+function createServiceClient() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+}
+
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url);
+    const groupId = searchParams.get('group_id');
+
+    const supabase = createServiceClient();
+    let query = supabase
       .from('inventory_items')
-      .select('*')
+      .select('id, name, unit_cost, quantity')
       .order('name');
+
+    if (groupId) {
+      query = query.eq('group_id', groupId).gt('quantity', 0);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 

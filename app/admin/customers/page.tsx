@@ -110,27 +110,32 @@ export default function CustomersPage() {
     equipment_type: '', make: '', model: '', serial_number: '', install_date: '', notes: '',
   });
 
-  useEffect(() => {
-    if (!authLoading) fetchCustomers();
-  }, [authLoading]);
-
   const fetchCustomers = async () => {
     if (!groupId) return;
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*, customer_rewards(balance, lifetime_earned), customer_tags(id, tag)')
-        .eq('group_id', groupId)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setCustomers(data || []);
+      setIsLoading(true);
+      const res = await fetch(`/api/customers?group_id=${groupId}`);
+      if (!res.ok) throw new Error('Failed to fetch customers');
+      const data = await res.json();
+      setCustomers(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!authLoading && groupId) fetchCustomers();
+  }, [authLoading, groupId]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (groupId) fetchCustomers();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [groupId]);
 
   const filteredCustomers = useMemo(() => {
     let result = customers;

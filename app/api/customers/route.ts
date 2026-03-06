@@ -1,16 +1,23 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+
+function createServiceClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createServiceClient();
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const group_id = searchParams.get('group_id');
 
     let query = supabase
       .from('customers')
-      .select('*, customer_rewards(balance, lifetime_earned)')
+      .select('*, customer_rewards(balance, lifetime_earned), customer_tags(id, tag)')
       .order('created_at', { ascending: false });
 
     if (group_id) query = query.eq('group_id', group_id);
@@ -30,7 +37,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createServiceClient();
     const body = await request.json();
 
     const { data, error } = await supabase
@@ -57,7 +64,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createServiceClient();
     const body = await request.json();
     const { id, ...updates } = body;
 
@@ -79,7 +86,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
+    const supabase = createServiceClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

@@ -37,6 +37,7 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Harden HVAC",
   },
+  manifest: '/manifest.json',
   formatDetection: {
     telephone: true,
   },
@@ -78,6 +79,9 @@ export default function RootLayout({
           src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
           strategy="beforeInteractive"
         />
+        <Script id="sw-register" strategy="afterInteractive">
+          {`if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }`}
+        </Script>
         {children}
       </body>
     </html>

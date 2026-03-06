@@ -339,6 +339,23 @@ export interface UpgradeItem {
   benefits: string[];
 }
 
+// Quote Option Types (for new service report builder)
+export interface QuoteOptionItem {
+  description: string;
+  category: 'part' | 'service' | 'membership' | 'upgrade';
+  quantity: number;
+  unit_price: number;
+  total: number;
+}
+
+export interface QuoteOption {
+  label: string;
+  name: string;
+  items: QuoteOptionItem[];
+  subtotal: number;
+  is_recommended: boolean;
+}
+
 export interface ServiceReport {
   id: string;
   customer_id: string | null;

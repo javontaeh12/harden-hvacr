@@ -6,8 +6,19 @@ import { useAuth } from './AuthProvider';
 import { Button, Input, Card, CardContent } from './ui';
 import { formatCurrency } from '@/lib/utils';
 import {
+  HVAC_BRANDS,
+  SYSTEM_HEALTH_COMPONENTS,
+  DEFAULT_HEALTH_COMPONENTS,
+  HEALTH_RATINGS,
+  AREA_SUGGESTIONS,
+  EQUIPMENT_TYPES,
+  QUOTE_ITEM_CATEGORIES,
+} from '@/lib/hvac-data';
+import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Plus,
   Trash2,
   Camera,
@@ -15,18 +26,32 @@ import {
   Check,
   Save,
   X,
-  Shield,
-  Thermometer,
-  Clock,
-  Zap,
-  Heart,
+  CreditCard,
+  DollarSign,
+  FileText,
+  Receipt,
 } from 'lucide-react';
 import type {
   ServiceReportMedia,
   RepairOption,
   RepairLineItem,
   UpgradeItem,
+  QuoteOption,
+  QuoteOptionItem,
 } from '@/types';
+
+declare global {
+  interface Window {
+    Square?: {
+      payments: (appId: string, locationId: string) => {
+        card: () => Promise<{
+          attach: (selector: string) => Promise<void>;
+          tokenize: () => Promise<{ status: string; token?: string; errors?: Array<{ message: string }> }>;
+        }>;
+      };
+    };
+  }
+}
 
 interface CustomerOption {
   id: string;
@@ -46,6 +71,7 @@ interface EquipmentOption {
 
 interface ServiceReportBuilderProps {
   reportId?: string | null;
+  initialCustomerId?: string | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -54,24 +80,12 @@ const STEPS = [
   'Equipment',
   'Warranty',
   'Problem',
-  'System Impact',
-  'Repair Plans',
-  'Upgrades',
+  'System Health',
   'Photos/Videos',
+  'Upgrades',
+  'Quote Options',
   'Review',
-];
-
-const EQUIPMENT_TYPES = [
-  'Air Conditioner',
-  'Heat Pump',
-  'Furnace',
-  'Mini Split',
-  'Package Unit',
-  'Boiler',
-  'Water Heater',
-  'Thermostat',
-  'Ductwork',
-  'Other',
+  'Payment',
 ];
 
 const REFRIGERANT_TYPES = ['R-410A', 'R-22', 'R-32', 'R-134a', 'R-407C', 'R-404A', 'Other'];
@@ -94,14 +108,6 @@ const SYMPTOM_OPTIONS = [
   'Electrical issues',
   'Vibration',
   'Compressor failure',
-];
-
-const IMPACT_CATEGORIES = [
-  { key: 'efficiency', label: 'Energy Efficiency', icon: Zap, desc: 'How much energy is being wasted' },
-  { key: 'safety', label: 'Safety', icon: Shield, desc: 'Risk to occupants and property' },
-  { key: 'comfort', label: 'Comfort', icon: Thermometer, desc: 'Impact on indoor comfort levels' },
-  { key: 'lifespan', label: 'Equipment Lifespan', icon: Clock, desc: 'Effect on equipment longevity' },
-  { key: 'energy_cost', label: 'Energy Cost', icon: Heart, desc: 'Impact on monthly utility bills' },
 ];
 
 const EMPTY_EQUIPMENT_INFO = {
@@ -131,22 +137,12 @@ const EMPTY_PROBLEM_DETAILS: { severity: 'low' | 'medium' | 'high' | 'critical';
   area_affected: '',
 };
 
-const EMPTY_IMPACT_DETAILS = {
-  efficiency: 3,
-  safety: 3,
-  comfort: 3,
-  lifespan: 3,
-  energy_cost: 3,
-};
-
-function createEmptyRepairOption(label: string): RepairOption {
+function createEmptyQuoteOption(label: string): QuoteOption {
   return {
     label,
     name: '',
-    line_items: [{ description: '', type: 'part', quantity: 1, unit_price: 0, total: 0 }],
+    items: [{ description: '', category: 'service', quantity: 1, unit_price: 0, total: 0 }],
     subtotal: 0,
-    benefits: [''],
-    timeline: '',
     is_recommended: false,
   };
 }
@@ -155,9 +151,12 @@ function createEmptyUpgrade(): UpgradeItem {
   return { name: '', price: 0, priority: 'medium', benefits: [''] };
 }
 
-export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceReportBuilderProps) {
+type PaymentMethod = 'card' | 'cash' | 'check' | 'invoice';
+
+export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onSaved }: ServiceReportBuilderProps) {
   const { groupId, profile } = useAuth();
   const [step, setStep] = useState(1);
+  const [visitedSteps, setVisitedSteps] = useState<Set<number>>(new Set([1]));
   const [saving, setSaving] = useState(false);
   const [savedReportId, setSavedReportId] = useState<string | null>(reportId || null);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
@@ -174,12 +173,33 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
   const [warrantyInfo, setWarrantyInfo] = useState(EMPTY_WARRANTY_INFO);
   const [problemFound, setProblemFound] = useState('');
   const [problemDetails, setProblemDetails] = useState(EMPTY_PROBLEM_DETAILS);
-  const [systemImpact, setSystemImpact] = useState('');
-  const [impactDetails, setImpactDetails] = useState(EMPTY_IMPACT_DETAILS);
-  const [repairOptions, setRepairOptions] = useState<RepairOption[]>([createEmptyRepairOption('A')]);
+  const [healthRatings, setHealthRatings] = useState<Record<string, number>>({});
+  const [healthNotes, setHealthNotes] = useState<Record<string, string>>({});
+  const [quoteOptions, setQuoteOptions] = useState<QuoteOption[]>([createEmptyQuoteOption('A')]);
+  const [selectedOptionIdx, setSelectedOptionIdx] = useState<number | null>(null);
+  const [expandedOption, setExpandedOption] = useState<number | null>(0);
   const [upgrades, setUpgrades] = useState<UpgradeItem[]>([]);
   const [techNotes, setTechNotes] = useState('');
   const [serviceDate, setServiceDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Brand autocomplete state
+  const [brandSearch, setBrandSearch] = useState('');
+  const [showBrands, setShowBrands] = useState(false);
+
+  // Signature state
+  const [signatureDataUrl, setSignatureDataUrl] = useState('');
+  const sigCanvasRef = useRef<HTMLCanvasElement>(null);
+  const isDrawingRef = useRef(false);
+
+  // Payment state
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+  const [squareCard, setSquareCard] = useState<{ attach: (s: string) => Promise<void>; tokenize: () => Promise<{ status: string; token?: string; errors?: Array<{ message: string }> }> } | null>(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [paymentComplete, setPaymentComplete] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+  const [cashTendered, setCashTendered] = useState('');
+  const [checkNumber, setCheckNumber] = useState('');
+  const [invoiceNote, setInvoiceNote] = useState('');
 
   // Media state
   const [media, setMedia] = useState<ServiceReportMedia[]>([]);
@@ -195,6 +215,18 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
     }
   }, [groupId, reportId]);
 
+  // Auto-select initial customer when customers list loads
+  useEffect(() => {
+    if (initialCustomerId && customers.length > 0 && !customerId && !reportId) {
+      const c = customers.find((c) => c.id === initialCustomerId);
+      if (c) {
+        setCustomerId(c.id);
+        setCustomerName(c.full_name);
+        setCustomerAddress(c.address || '');
+      }
+    }
+  }, [initialCustomerId, customers, customerId, reportId]);
+
   // Auto-save every 30s
   useEffect(() => {
     if (!savedReportId) return;
@@ -207,7 +239,41 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
     return () => {
       if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
     };
-  }, [savedReportId, customerId, equipmentInfo, warrantyInfo, problemFound, problemDetails, systemImpact, impactDetails, repairOptions, upgrades, techNotes]);
+  }, [savedReportId, customerId, equipmentInfo, warrantyInfo, problemFound, problemDetails, healthRatings, healthNotes, quoteOptions, selectedOptionIdx, upgrades, techNotes]);
+
+  // Square SDK loading
+  useEffect(() => {
+    if (step !== 9 || paymentMethod !== 'card') return;
+    const existingScript = document.querySelector('script[src*="squarecdn"]');
+    if (existingScript) {
+      initSquare();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = process.env.NEXT_PUBLIC_SQUARE_ENVIRONMENT === 'production'
+      ? 'https://web.squarecdn.com/v1/square.js'
+      : 'https://sandbox.web.squarecdn.com/v1/square.js';
+    script.onload = () => initSquare();
+    document.head.appendChild(script);
+    return () => {
+      // Don't remove script, Square doesn't like re-init
+    };
+  }, [step, paymentMethod]);
+
+  const initSquare = async () => {
+    if (!window.Square) return;
+    try {
+      const payments = window.Square.payments(
+        process.env.NEXT_PUBLIC_SQUARE_APP_ID!,
+        process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID!
+      );
+      const card = await payments.card();
+      await card.attach('#card-container');
+      setSquareCard(card);
+    } catch {
+      // Square init can fail if container not ready yet
+    }
+  };
 
   const fetchCustomersAndEquipment = async () => {
     const supabase = createClient();
@@ -232,9 +298,10 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
     setWarrantyInfo(data.warranty_info || EMPTY_WARRANTY_INFO);
     setProblemFound(data.problem_found || '');
     setProblemDetails(data.problem_details || EMPTY_PROBLEM_DETAILS);
-    setSystemImpact(data.system_impact || '');
-    setImpactDetails(data.impact_details || EMPTY_IMPACT_DETAILS);
-    setRepairOptions(data.repair_options?.length ? data.repair_options : [createEmptyRepairOption('A')]);
+    setHealthRatings(data.health_ratings || {});
+    setHealthNotes(data.health_notes || {});
+    setQuoteOptions(data.quote_options?.length ? data.quote_options : [createEmptyQuoteOption('A')]);
+    setSelectedOptionIdx(data.selected_option_idx ?? null);
     setUpgrades(data.upgrades || []);
     setTechNotes(data.tech_notes || '');
     setServiceDate(data.service_date || new Date().toISOString().split('T')[0]);
@@ -258,15 +325,16 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
     warranty_info: warrantyInfo,
     problem_found: problemFound,
     problem_details: problemDetails,
-    system_impact: systemImpact,
-    impact_details: impactDetails,
-    repair_options: repairOptions,
+    health_ratings: healthRatings,
+    health_notes: healthNotes,
+    quote_options: quoteOptions,
+    selected_option_idx: selectedOptionIdx,
     upgrades,
     tech_notes: techNotes || null,
     customer_name: customerName || null,
     customer_address: customerAddress || null,
     service_date: serviceDate,
-  }), [customerId, equipmentId, profile, groupId, equipmentInfo, warrantyInfo, problemFound, problemDetails, systemImpact, impactDetails, repairOptions, upgrades, techNotes, customerName, customerAddress, serviceDate]);
+  }), [customerId, equipmentId, profile, groupId, equipmentInfo, warrantyInfo, problemFound, problemDetails, healthRatings, healthNotes, quoteOptions, selectedOptionIdx, upgrades, techNotes, customerName, customerAddress, serviceDate]);
 
   const saveDraft = async (silent = false) => {
     if (!groupId) return;
@@ -343,50 +411,59 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
         model: eq.model || prev.model,
         serial_number: eq.serial_number || prev.serial_number,
       }));
+      if (eq.make) setBrandSearch(eq.make);
     }
   };
 
-  // Repair option helpers
-  const addRepairOption = () => {
+  // Quote option helpers
+  const addQuoteOption = () => {
     const labels = 'ABCDEFGHIJ';
-    const next = labels[repairOptions.length] || `${repairOptions.length + 1}`;
-    setRepairOptions([...repairOptions, createEmptyRepairOption(next)]);
+    const next = labels[quoteOptions.length] || `${quoteOptions.length + 1}`;
+    setQuoteOptions([...quoteOptions, createEmptyQuoteOption(next)]);
+    setExpandedOption(quoteOptions.length);
   };
 
-  const removeRepairOption = (idx: number) => {
-    setRepairOptions(repairOptions.filter((_, i) => i !== idx));
+  const removeQuoteOption = (idx: number) => {
+    const updated = quoteOptions.filter((_, i) => i !== idx);
+    setQuoteOptions(updated);
+    if (selectedOptionIdx === idx) setSelectedOptionIdx(null);
+    else if (selectedOptionIdx !== null && selectedOptionIdx > idx) setSelectedOptionIdx(selectedOptionIdx - 1);
+    if (expandedOption === idx) setExpandedOption(updated.length > 0 ? 0 : null);
+    else if (expandedOption !== null && expandedOption > idx) setExpandedOption(expandedOption - 1);
   };
 
-  const updateRepairOption = (idx: number, updates: Partial<RepairOption>) => {
-    setRepairOptions(repairOptions.map((opt, i) => (i === idx ? { ...opt, ...updates } : opt)));
+  const updateQuoteOption = (idx: number, updates: Partial<QuoteOption>) => {
+    setQuoteOptions(quoteOptions.map((opt, i) => (i === idx ? { ...opt, ...updates } : opt)));
   };
 
-  const addLineItem = (optIdx: number) => {
-    const updated = [...repairOptions];
-    updated[optIdx].line_items.push({ description: '', type: 'part', quantity: 1, unit_price: 0, total: 0 });
-    setRepairOptions(updated);
+  const addQuoteItem = (optIdx: number) => {
+    const updated = [...quoteOptions];
+    updated[optIdx] = {
+      ...updated[optIdx],
+      items: [...updated[optIdx].items, { description: '', category: 'service', quantity: 1, unit_price: 0, total: 0 }],
+    };
+    setQuoteOptions(updated);
   };
 
-  const removeLineItem = (optIdx: number, itemIdx: number) => {
-    const updated = [...repairOptions];
-    updated[optIdx].line_items = updated[optIdx].line_items.filter((_, i) => i !== itemIdx);
-    recalcSubtotal(updated, optIdx);
-    setRepairOptions(updated);
+  const removeQuoteItem = (optIdx: number, itemIdx: number) => {
+    const updated = [...quoteOptions];
+    const newItems = updated[optIdx].items.filter((_, i) => i !== itemIdx);
+    const subtotal = newItems.reduce((sum, li) => sum + li.total, 0);
+    updated[optIdx] = { ...updated[optIdx], items: newItems, subtotal };
+    setQuoteOptions(updated);
   };
 
-  const updateLineItem = (optIdx: number, itemIdx: number, field: keyof RepairLineItem, value: string | number) => {
-    const updated = [...repairOptions];
-    const item = { ...updated[optIdx].line_items[itemIdx], [field]: value };
+  const updateQuoteItem = (optIdx: number, itemIdx: number, field: keyof QuoteOptionItem, value: string | number) => {
+    const updated = [...quoteOptions];
+    const item = { ...updated[optIdx].items[itemIdx], [field]: value };
     if (field === 'quantity' || field === 'unit_price') {
       item.total = Number(item.quantity) * Number(item.unit_price);
     }
-    updated[optIdx].line_items[itemIdx] = item;
-    recalcSubtotal(updated, optIdx);
-    setRepairOptions(updated);
-  };
-
-  const recalcSubtotal = (options: RepairOption[], idx: number) => {
-    options[idx].subtotal = options[idx].line_items.reduce((sum, li) => sum + li.total, 0);
+    const newItems = [...updated[optIdx].items];
+    newItems[itemIdx] = item;
+    const subtotal = newItems.reduce((sum, li) => sum + li.total, 0);
+    updated[optIdx] = { ...updated[optIdx], items: newItems, subtotal };
+    setQuoteOptions(updated);
   };
 
   // Upgrade helpers
@@ -444,21 +521,149 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
   const deleteMedia = async (id: string, url: string) => {
     const supabase = createClient();
     await supabase.from('service_report_media').delete().eq('id', id);
-    // Extract path from URL for storage deletion
     const pathMatch = url.match(/service-reports\/.+/);
     if (pathMatch) await supabase.storage.from('service-reports').remove([pathMatch[0]]);
     setMedia((prev) => prev.filter((m) => m.id !== id));
   };
 
-  // Step navigation with auto-save on first next
+  // Signature canvas handlers
+  const startSign = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    isDrawingRef.current = true;
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000';
+  };
+
+  const drawSign = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current) return;
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const endSign = () => {
+    isDrawingRef.current = false;
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    setSignatureDataUrl(canvas.toDataURL());
+  };
+
+  const clearSignature = () => {
+    setSignatureDataUrl('');
+    const canvas = sigCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  // Payment processing
+  const processPayment = async () => {
+    if (!savedReportId) return;
+    setProcessingPayment(true);
+    setPaymentError('');
+
+    try {
+      if (paymentMethod === 'card') {
+        if (!squareCard) {
+          setPaymentError('Card form not loaded. Please wait and try again.');
+          setProcessingPayment(false);
+          return;
+        }
+        const result = await squareCard.tokenize();
+        if (result.status !== 'OK' || !result.token) {
+          setPaymentError(result.errors?.[0]?.message || 'Card tokenization failed.');
+          setProcessingPayment(false);
+          return;
+        }
+        const selectedOpt = selectedOptionIdx !== null ? quoteOptions[selectedOptionIdx] : null;
+        const amount = selectedOpt ? Math.round(selectedOpt.subtotal * 100) : 0;
+
+        const res = await fetch('/api/square/payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sourceId: result.token,
+            amount,
+            currency: 'USD',
+            reportId: savedReportId,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setPaymentError(data.error || 'Payment failed.');
+          setProcessingPayment(false);
+          return;
+        }
+      }
+
+      // Save payment info to report
+      const supabase = createClient();
+      const paymentInfo: Record<string, unknown> = {
+        method: paymentMethod,
+        status: 'completed',
+        amount: selectedOptionIdx !== null ? quoteOptions[selectedOptionIdx].subtotal : 0,
+      };
+      if (paymentMethod === 'cash') paymentInfo.cash_tendered = Number(cashTendered);
+      if (paymentMethod === 'check') paymentInfo.check_number = checkNumber;
+      if (paymentMethod === 'invoice') paymentInfo.invoice_note = invoiceNote;
+
+      await supabase
+        .from('service_reports')
+        .update({
+          ...getFormData(),
+          status: 'completed',
+          payment_info: paymentInfo,
+          updated_at: new Date().toISOString(),
+        } as Record<string, unknown>)
+        .eq('id', savedReportId);
+
+      setPaymentComplete(true);
+      onSaved();
+    } catch (err: unknown) {
+      setPaymentError(err instanceof Error ? err.message : 'Payment processing failed.');
+    }
+    setProcessingPayment(false);
+  };
+
+  // Navigation helper
+  const navigateToStep = (stepNum: number) => {
+    setStep(stepNum);
+    setVisitedSteps(prev => new Set(prev).add(stepNum));
+  };
+
+  // Review/Payment availability
+  const hasMedia = media.length > 0 || pendingFiles.length > 0;
+  const allStepsVisited = [1, 2, 3, 4, 5, 6, 7].every(s => visitedSteps.has(s));
+  const reviewAvailable = selectedOptionIdx !== null && hasMedia && allStepsVisited;
+  const paymentAvailable = !!signatureDataUrl;
+
+  // Step navigation
   const goNext = async () => {
     if (step === 1 && !savedReportId) {
       await saveDraft();
     }
-    setStep(Math.min(step + 1, 8));
+    const nextStep = step + 1;
+    if (nextStep === 8 && !reviewAvailable) return;
+    if (nextStep === 9 && !paymentAvailable) return;
+    navigateToStep(Math.min(nextStep, 9));
   };
 
-  const goBack = () => setStep(Math.max(step - 1, 1));
+  const goBack = () => navigateToStep(Math.max(step - 1, 1));
 
   // Symptom toggle
   const toggleSymptom = (symptom: string) => {
@@ -477,100 +682,142 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
 
   // === STEP RENDERERS ===
 
-  const renderStep1 = () => (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">Equipment Information</h3>
+  const renderStep1 = () => {
+    const filteredBrands = HVAC_BRANDS.filter(b =>
+      b.toLowerCase().includes(brandSearch.toLowerCase())
+    ).slice(0, 8);
 
-      {/* Customer selector */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-        <select
-          value={customerId}
-          onChange={(e) => handleCustomerChange(e.target.value)}
-          className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="">Select customer...</option>
-          {customers.map((c) => (
-            <option key={c.id} value={c.id}>{c.full_name}</option>
-          ))}
-        </select>
-      </div>
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-gray-900">Equipment Information</h3>
 
-      {/* Existing equipment selector */}
-      {filteredEquipment.length > 0 && (
+        {/* Customer selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Existing Equipment (optional)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
           <select
-            value={equipmentId}
-            onChange={(e) => handleEquipmentSelect(e.target.value)}
+            value={customerId}
+            onChange={(e) => handleCustomerChange(e.target.value)}
             className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            <option value="">Select or enter manually...</option>
-            {filteredEquipment.map((eq) => (
-              <option key={eq.id} value={eq.id}>
-                {eq.equipment_type} - {eq.make} {eq.model}
-              </option>
+            <option value="">Select customer...</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>{c.full_name}</option>
             ))}
           </select>
         </div>
-      )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Equipment Type</label>
-          <select
-            value={equipmentInfo.equipment_type}
-            onChange={(e) => setEquipmentInfo({ ...equipmentInfo, equipment_type: e.target.value })}
-            className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">Select type...</option>
-            {EQUIPMENT_TYPES.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </div>
-        <Input label="Make" value={equipmentInfo.make} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, make: e.target.value })} />
-        <Input label="Model" value={equipmentInfo.model} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, model: e.target.value })} />
-        <Input label="Serial Number" value={equipmentInfo.serial_number} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, serial_number: e.target.value })} />
-        <Input label="Location" placeholder="e.g. Rooftop, Attic, Garage" value={equipmentInfo.location} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, location: e.target.value })} />
-        <Input label="Age (years)" type="number" value={equipmentInfo.age} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, age: e.target.value })} />
-        <Input label="Tonnage" value={equipmentInfo.tonnage} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, tonnage: e.target.value })} />
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Refrigerant Type</label>
-          <select
-            value={equipmentInfo.refrigerant_type}
-            onChange={(e) => setEquipmentInfo({ ...equipmentInfo, refrigerant_type: e.target.value })}
-            className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">Select refrigerant...</option>
-            {REFRIGERANT_TYPES.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
-        <div className="flex flex-wrap gap-2">
-          {CONDITIONS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setEquipmentInfo({ ...equipmentInfo, condition: c })}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                equipmentInfo.condition === c
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              }`}
+        {/* Existing equipment selector */}
+        {filteredEquipment.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Existing Equipment (optional)</label>
+            <select
+              value={equipmentId}
+              onChange={(e) => handleEquipmentSelect(e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              {c}
-            </button>
-          ))}
+              <option value="">Select or enter manually...</option>
+              {filteredEquipment.map((eq) => (
+                <option key={eq.id} value={eq.id}>
+                  {eq.equipment_type} - {eq.make} {eq.model}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Equipment Type</label>
+            <select
+              value={equipmentInfo.equipment_type}
+              onChange={(e) => setEquipmentInfo({ ...equipmentInfo, equipment_type: e.target.value })}
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Select type...</option>
+              {EQUIPMENT_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Make with brand autocomplete */}
+          <div className="relative">
+            <Input
+              label="Make"
+              value={equipmentInfo.make}
+              onChange={(e) => {
+                const val = e.target.value;
+                setBrandSearch(val);
+                setEquipmentInfo({ ...equipmentInfo, make: val });
+                setShowBrands(true);
+              }}
+              onFocus={() => { if (brandSearch.length >= 1) setShowBrands(true); }}
+              onBlur={() => { setTimeout(() => setShowBrands(false), 300); }}
+              placeholder="Start typing brand..."
+            />
+            {showBrands && brandSearch.length >= 1 && filteredBrands.length > 0 && (
+              <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {filteredBrands.map((brand) => (
+                  <button
+                    key={brand}
+                    type="button"
+                    className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setEquipmentInfo({ ...equipmentInfo, make: brand });
+                      setBrandSearch(brand);
+                      setShowBrands(false);
+                    }}
+                  >
+                    {brand}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <Input label="Model" value={equipmentInfo.model} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, model: e.target.value })} />
+          <Input label="Serial Number" value={equipmentInfo.serial_number} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, serial_number: e.target.value })} />
+          <Input label="Location" placeholder="e.g. Rooftop, Attic, Garage" value={equipmentInfo.location} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, location: e.target.value })} />
+          <Input label="Age (years)" type="number" value={equipmentInfo.age} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, age: e.target.value })} />
+          <Input label="Tonnage" value={equipmentInfo.tonnage} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, tonnage: e.target.value })} />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Refrigerant Type</label>
+            <select
+              value={equipmentInfo.refrigerant_type}
+              onChange={(e) => setEquipmentInfo({ ...equipmentInfo, refrigerant_type: e.target.value })}
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Select refrigerant...</option>
+              {REFRIGERANT_TYPES.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
+          <div className="flex flex-wrap gap-2">
+            {CONDITIONS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setEquipmentInfo({ ...equipmentInfo, condition: c })}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  equipmentInfo.condition === c
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderStep2 = () => (
     <div className="space-y-4">
@@ -650,9 +897,9 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
         <textarea
           value={problemFound}
           onChange={(e) => setProblemFound(e.target.value)}
-          rows={4}
+          rows={8}
           placeholder="Describe the problem found during inspection..."
-          className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[200px]"
         />
       </div>
 
@@ -708,294 +955,81 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
         </div>
       </div>
 
-      <Input
-        label="Area Affected"
-        placeholder="e.g. Entire building, 2nd floor, Master bedroom"
-        value={problemDetails.area_affected}
-        onChange={(e) => setProblemDetails({ ...problemDetails, area_affected: e.target.value })}
-      />
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Area Affected</label>
+        <input
+          value={problemDetails.area_affected}
+          onChange={(e) => setProblemDetails({ ...problemDetails, area_affected: e.target.value })}
+          placeholder="Type or select..."
+          className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {AREA_SUGGESTIONS
+            .filter(a => !problemDetails.area_affected || a.toLowerCase().includes(problemDetails.area_affected.toLowerCase()))
+            .slice(0, 12)
+            .map(area => (
+              <button
+                key={area}
+                type="button"
+                onClick={() => setProblemDetails({ ...problemDetails, area_affected: area })}
+                className={`px-2.5 py-1 rounded-full text-xs border ${
+                  problemDetails.area_affected === area
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {area}
+              </button>
+            ))}
+        </div>
+      </div>
     </div>
   );
 
-  const renderStep4 = () => (
-    <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">System Impact</h3>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Why This Matters</label>
-        <textarea
-          value={systemImpact}
-          onChange={(e) => setSystemImpact(e.target.value)}
-          rows={3}
-          placeholder="Explain to the customer why this problem matters and what could happen if left unaddressed..."
-          className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-      </div>
-
+  const renderStep4 = () => {
+    const eqType = equipmentInfo.equipment_type;
+    const components = SYSTEM_HEALTH_COMPONENTS[eqType] || DEFAULT_HEALTH_COMPONENTS;
+    return (
       <div className="space-y-4">
-        <label className="block text-sm font-medium text-gray-700">Impact Ratings (1 = Low, 5 = Critical)</label>
-        {IMPACT_CATEGORIES.map(({ key, label, icon: Icon, desc }) => (
-          <div key={key} className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Icon className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">{label}</span>
+        <h3 className="text-lg font-semibold text-gray-900">System Health</h3>
+        <p className="text-sm text-gray-500">Rate each component of the {eqType || 'system'}</p>
+        {components.map(comp => (
+          <div key={comp.key} className="border border-gray-100 rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">{comp.label}</span>
+              <span className="text-xs text-gray-400">
+                {healthRatings[comp.key] ? HEALTH_RATINGS.find(r => r.value === healthRatings[comp.key])?.label : 'Not rated'}
+              </span>
             </div>
-            <p className="text-xs text-gray-500 ml-6">{desc}</p>
-            <div className="flex gap-1 ml-6">
-              {[1, 2, 3, 4, 5].map((val) => (
+            <div className="flex gap-1">
+              {HEALTH_RATINGS.slice().reverse().map(rating => (
                 <button
-                  key={val}
+                  key={rating.value}
                   type="button"
-                  onClick={() => setImpactDetails({ ...impactDetails, [key]: val })}
-                  className={`w-10 h-10 rounded-lg text-sm font-medium border transition-colors ${
-                    impactDetails[key as keyof typeof impactDetails] >= val
-                      ? val <= 2
-                        ? 'bg-green-500 text-white border-green-500'
-                        : val <= 3
-                        ? 'bg-yellow-500 text-white border-yellow-500'
-                        : 'bg-red-500 text-white border-red-500'
-                      : 'bg-white text-gray-400 border-gray-300 hover:bg-gray-50'
+                  onClick={() => setHealthRatings(prev => ({ ...prev, [comp.key]: rating.value }))}
+                  className={`flex-1 py-2 rounded text-xs font-medium transition-colors ${
+                    healthRatings[comp.key] === rating.value
+                      ? `${rating.color} text-white`
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                   }`}
                 >
-                  {val}
+                  {rating.value}
                 </button>
               ))}
             </div>
+            <input
+              placeholder="Notes (optional)..."
+              value={healthNotes[comp.key] || ''}
+              onChange={(e) => setHealthNotes(prev => ({ ...prev, [comp.key]: e.target.value }))}
+              className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-black placeholder-gray-400"
+            />
           </div>
         ))}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderStep5 = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Repair Plans</h3>
-        <Button size="sm" variant="outline" onClick={addRepairOption}>
-          <Plus className="w-4 h-4 mr-1" /> Add Option
-        </Button>
-      </div>
-
-      {repairOptions.map((opt, optIdx) => (
-        <Card key={optIdx}>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
-                  {opt.label}
-                </span>
-                <Input
-                  placeholder="Option name (e.g. Basic Repair)"
-                  value={opt.name}
-                  onChange={(e) => updateRepairOption(optIdx, { name: e.target.value })}
-                  className="!mb-0"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const updated = repairOptions.map((o, i) => ({ ...o, is_recommended: i === optIdx }));
-                    setRepairOptions(updated);
-                  }}
-                  className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
-                    opt.is_recommended
-                      ? 'bg-green-100 text-green-700 border-green-300'
-                      : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  {opt.is_recommended ? 'Recommended' : 'Set Recommended'}
-                </button>
-                {repairOptions.length > 1 && (
-                  <button type="button" onClick={() => removeRepairOption(optIdx)} className="p-1 text-red-500 hover:bg-red-50 rounded">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Line items */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Line Items</label>
-              {opt.line_items.map((item, itemIdx) => (
-                <div key={itemIdx} className="flex flex-wrap gap-2 items-end">
-                  <div className="flex-1 min-w-[150px]">
-                    <Input
-                      placeholder="Description"
-                      value={item.description}
-                      onChange={(e) => updateLineItem(optIdx, itemIdx, 'description', e.target.value)}
-                    />
-                  </div>
-                  <div className="w-24">
-                    <select
-                      value={item.type}
-                      onChange={(e) => updateLineItem(optIdx, itemIdx, 'type', e.target.value)}
-                      className="block w-full rounded-lg border border-gray-300 px-2 py-2 text-sm text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="part">Part</option>
-                      <option value="labor">Labor</option>
-                      <option value="flat_fee">Flat Fee</option>
-                    </select>
-                  </div>
-                  <div className="w-16">
-                    <Input
-                      type="number"
-                      placeholder="Qty"
-                      value={item.quantity}
-                      onChange={(e) => updateLineItem(optIdx, itemIdx, 'quantity', Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="w-24">
-                    <Input
-                      type="number"
-                      placeholder="Price"
-                      value={item.unit_price}
-                      onChange={(e) => updateLineItem(optIdx, itemIdx, 'unit_price', Number(e.target.value))}
-                    />
-                  </div>
-                  <span className="text-sm font-medium text-gray-700 w-20 text-right py-2">
-                    {formatCurrency(item.total)}
-                  </span>
-                  {opt.line_items.length > 1 && (
-                    <button type="button" onClick={() => removeLineItem(optIdx, itemIdx)} className="p-1 text-red-500 hover:bg-red-50 rounded">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <Button size="sm" variant="ghost" onClick={() => addLineItem(optIdx)}>
-                <Plus className="w-4 h-4 mr-1" /> Add Line Item
-              </Button>
-            </div>
-
-            <div className="flex justify-end text-lg font-bold text-gray-900">
-              Total: {formatCurrency(opt.subtotal)}
-            </div>
-
-            {/* Benefits */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Benefits</label>
-              {opt.benefits.map((b, bIdx) => (
-                <div key={bIdx} className="flex gap-2">
-                  <Input
-                    placeholder="e.g. Restores full cooling capacity"
-                    value={b}
-                    onChange={(e) => {
-                      const updated = [...opt.benefits];
-                      updated[bIdx] = e.target.value;
-                      updateRepairOption(optIdx, { benefits: updated });
-                    }}
-                  />
-                  {opt.benefits.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => updateRepairOption(optIdx, { benefits: opt.benefits.filter((_, i) => i !== bIdx) })}
-                      className="p-1 text-red-500 hover:bg-red-50 rounded"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <Button size="sm" variant="ghost" onClick={() => updateRepairOption(optIdx, { benefits: [...opt.benefits, ''] })}>
-                <Plus className="w-4 h-4 mr-1" /> Add Benefit
-              </Button>
-            </div>
-
-            <Input
-              label="Timeline"
-              placeholder="e.g. 2-3 hours, Same day"
-              value={opt.timeline}
-              onChange={(e) => updateRepairOption(optIdx, { timeline: e.target.value })}
-            />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-
-  const renderStep6 = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Upgrades & Add-ons</h3>
-        <Button size="sm" variant="outline" onClick={addUpgrade}>
-          <Plus className="w-4 h-4 mr-1" /> Add Upgrade
-        </Button>
-      </div>
-
-      {upgrades.length === 0 && (
-        <p className="text-sm text-gray-500 text-center py-8">No upgrades added. Click &ldquo;Add Upgrade&rdquo; to suggest accessories or add-ons.</p>
-      )}
-
-      {upgrades.map((upg, idx) => (
-        <Card key={idx}>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Input
-                label="Name"
-                placeholder="e.g. UV Light, Smart Thermostat"
-                value={upg.name}
-                onChange={(e) => updateUpgrade(idx, { name: e.target.value })}
-              />
-              <button type="button" onClick={() => removeUpgrade(idx)} className="p-1 text-red-500 hover:bg-red-50 rounded ml-2 mt-5">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Price"
-                type="number"
-                value={upg.price}
-                onChange={(e) => updateUpgrade(idx, { price: Number(e.target.value) })}
-              />
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                <select
-                  value={upg.priority}
-                  onChange={(e) => updateUpgrade(idx, { priority: e.target.value as 'low' | 'medium' | 'high' })}
-                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Benefits</label>
-              {upg.benefits.map((b, bIdx) => (
-                <div key={bIdx} className="flex gap-2">
-                  <Input
-                    placeholder="Benefit"
-                    value={b}
-                    onChange={(e) => {
-                      const updated = [...upg.benefits];
-                      updated[bIdx] = e.target.value;
-                      updateUpgrade(idx, { benefits: updated });
-                    }}
-                  />
-                  {upg.benefits.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => updateUpgrade(idx, { benefits: upg.benefits.filter((_, i) => i !== bIdx) })}
-                      className="p-1 text-red-500 hover:bg-red-50 rounded"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <Button size="sm" variant="ghost" onClick={() => updateUpgrade(idx, { benefits: [...upg.benefits, ''] })}>
-                <Plus className="w-4 h-4 mr-1" /> Add Benefit
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-
-  const renderStep7 = () => (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-gray-900">Photos & Videos</h3>
 
@@ -1104,8 +1138,264 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
     </div>
   );
 
+  const renderStep6 = () => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900">Upgrades & Add-ons</h3>
+        <Button size="sm" variant="outline" onClick={addUpgrade}>
+          <Plus className="w-4 h-4 mr-1" /> Add Upgrade
+        </Button>
+      </div>
+
+      {upgrades.length === 0 && (
+        <p className="text-sm text-gray-500 text-center py-8">No upgrades added. Click &ldquo;Add Upgrade&rdquo; to suggest accessories or add-ons.</p>
+      )}
+
+      {upgrades.map((upg, idx) => (
+        <Card key={idx}>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Input
+                label="Name"
+                placeholder="e.g. UV Light, Smart Thermostat"
+                value={upg.name}
+                onChange={(e) => updateUpgrade(idx, { name: e.target.value })}
+              />
+              <button type="button" onClick={() => removeUpgrade(idx)} className="p-1 text-red-500 hover:bg-red-50 rounded ml-2 mt-5">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Price"
+                type="number"
+                value={upg.price}
+                onChange={(e) => updateUpgrade(idx, { price: Number(e.target.value) })}
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <select
+                  value={upg.priority}
+                  onChange={(e) => updateUpgrade(idx, { priority: e.target.value as 'low' | 'medium' | 'high' })}
+                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Benefits</label>
+              {upg.benefits.map((b, bIdx) => (
+                <div key={bIdx} className="flex gap-2">
+                  <Input
+                    placeholder="Benefit"
+                    value={b}
+                    onChange={(e) => {
+                      const updated = [...upg.benefits];
+                      updated[bIdx] = e.target.value;
+                      updateUpgrade(idx, { benefits: updated });
+                    }}
+                  />
+                  {upg.benefits.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => updateUpgrade(idx, { benefits: upg.benefits.filter((_, i) => i !== bIdx) })}
+                      className="p-1 text-red-500 hover:bg-red-50 rounded"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <Button size="sm" variant="ghost" onClick={() => updateUpgrade(idx, { benefits: [...upg.benefits, ''] })}>
+                <Plus className="w-4 h-4 mr-1" /> Add Benefit
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const renderStep7 = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900">Quote Options</h3>
+        <Button size="sm" variant="outline" onClick={addQuoteOption}>
+          <Plus className="w-4 h-4 mr-1" /> Add Option
+        </Button>
+      </div>
+
+      {quoteOptions.map((opt, optIdx) => {
+        const isExpanded = expandedOption === optIdx;
+        return (
+          <Card key={optIdx}>
+            <CardContent className="p-0">
+              {/* Option header */}
+              <button
+                type="button"
+                onClick={() => setExpandedOption(isExpanded ? null : optIdx)}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+              >
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
+                  selectedOptionIdx === optIdx ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {opt.label}
+                </span>
+                <div className="flex-1 text-left min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-900 truncate">{opt.name || 'Unnamed Option'}</span>
+                    {opt.is_recommended && (
+                      <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded flex-shrink-0">Recommended</span>
+                    )}
+                  </div>
+                  <span className="text-sm text-gray-500">{formatCurrency(opt.subtotal)}</span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {quoteOptions.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); removeQuoteOption(optIdx); }}
+                      className="p-1 text-red-500 hover:bg-red-50 rounded"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                  {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                </div>
+              </button>
+
+              {/* Option body */}
+              {isExpanded && (
+                <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
+                  <div className="pt-3 flex flex-wrap items-center gap-3">
+                    <div className="flex-1 min-w-[200px]">
+                      <Input
+                        placeholder="Option name (e.g. Basic Repair)"
+                        value={opt.name}
+                        onChange={(e) => updateQuoteOption(optIdx, { name: e.target.value })}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = quoteOptions.map((o, i) => ({ ...o, is_recommended: i === optIdx }));
+                        setQuoteOptions(updated);
+                      }}
+                      className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
+                        opt.is_recommended
+                          ? 'bg-green-100 text-green-700 border-green-300'
+                          : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {opt.is_recommended ? 'Recommended' : 'Set Recommended'}
+                    </button>
+                  </div>
+
+                  {/* Items */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Items</label>
+                    {opt.items.map((item, itemIdx) => (
+                      <div key={itemIdx} className="flex flex-wrap gap-2 items-end">
+                        <div className="flex-1 min-w-[150px]">
+                          <Input
+                            placeholder="Description"
+                            value={item.description}
+                            onChange={(e) => updateQuoteItem(optIdx, itemIdx, 'description', e.target.value)}
+                          />
+                        </div>
+                        <div className="w-28">
+                          <select
+                            value={item.category}
+                            onChange={(e) => updateQuoteItem(optIdx, itemIdx, 'category', e.target.value)}
+                            className="block w-full rounded-lg border border-gray-300 px-2 py-2 text-sm text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          >
+                            {QUOTE_ITEM_CATEGORIES.map(cat => (
+                              <option key={cat.key} value={cat.key}>{cat.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="w-16">
+                          <Input
+                            type="number"
+                            placeholder="Qty"
+                            value={item.quantity}
+                            onChange={(e) => updateQuoteItem(optIdx, itemIdx, 'quantity', Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="w-24">
+                          <Input
+                            type="number"
+                            placeholder="Price"
+                            value={item.unit_price}
+                            onChange={(e) => updateQuoteItem(optIdx, itemIdx, 'unit_price', Number(e.target.value))}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 w-20 text-right py-2">
+                          {formatCurrency(item.total)}
+                        </span>
+                        {opt.items.length > 1 && (
+                          <button type="button" onClick={() => removeQuoteItem(optIdx, itemIdx)} className="p-1 text-red-500 hover:bg-red-50 rounded">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <Button size="sm" variant="ghost" onClick={() => addQuoteItem(optIdx)}>
+                      <Plus className="w-4 h-4 mr-1" /> Add Item
+                    </Button>
+                  </div>
+
+                  <div className="flex justify-end text-lg font-bold text-gray-900 pt-2 border-t border-gray-100">
+                    Subtotal: {formatCurrency(opt.subtotal)}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+
+      {/* Customer Selection */}
+      <div className="border-t border-gray-200 pt-4">
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Which option does the customer want?</h4>
+        <div className="space-y-2">
+          {quoteOptions.map((opt, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setSelectedOptionIdx(idx)}
+              className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${
+                selectedOptionIdx === idx
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
+                  selectedOptionIdx === idx ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {selectedOptionIdx === idx ? <Check className="w-4 h-4" /> : opt.label}
+                </span>
+                <span className="text-sm font-medium text-gray-900">{opt.name || 'Unnamed Option'}</span>
+                {opt.is_recommended && (
+                  <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">Recommended</span>
+                )}
+              </div>
+              <span className="text-sm font-bold text-gray-900">{formatCurrency(opt.subtotal)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   const renderStep8 = () => {
     const selectedCustomer = customers.find((c) => c.id === customerId);
+    const selectedOpt = selectedOptionIdx !== null ? quoteOptions[selectedOptionIdx] : null;
+
     return (
       <div className="space-y-6">
         <h3 className="text-lg font-semibold text-gray-900">Review & Submit</h3>
@@ -1115,7 +1405,7 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
           <CardContent>
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-medium text-gray-900">Equipment</h4>
-              <button type="button" onClick={() => setStep(1)} className="text-sm text-blue-600 hover:underline">Edit</button>
+              <button type="button" onClick={() => navigateToStep(1)} className="text-sm text-blue-600 hover:underline">Edit</button>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
               {selectedCustomer && <p className="col-span-2 text-gray-700"><span className="text-gray-500">Customer:</span> {selectedCustomer.full_name}</p>}
@@ -1134,7 +1424,7 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
           <CardContent>
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-medium text-gray-900">Warranty</h4>
-              <button type="button" onClick={() => setStep(2)} className="text-sm text-blue-600 hover:underline">Edit</button>
+              <button type="button" onClick={() => navigateToStep(2)} className="text-sm text-blue-600 hover:underline">Edit</button>
             </div>
             <p className="text-sm text-gray-700">
               {warrantyInfo.has_warranty
@@ -1149,7 +1439,7 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
           <CardContent>
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-medium text-gray-900">Problem Found</h4>
-              <button type="button" onClick={() => setStep(3)} className="text-sm text-blue-600 hover:underline">Edit</button>
+              <button type="button" onClick={() => navigateToStep(3)} className="text-sm text-blue-600 hover:underline">Edit</button>
             </div>
             <p className="text-sm text-gray-700">{problemFound || 'No description'}</p>
             <div className="flex flex-wrap gap-1 mt-2">
@@ -1168,68 +1458,33 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
           </CardContent>
         </Card>
 
-        {/* Impact Summary */}
+        {/* System Health Summary */}
         <Card>
           <CardContent>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-gray-900">System Impact</h4>
-              <button type="button" onClick={() => setStep(4)} className="text-sm text-blue-600 hover:underline">Edit</button>
+              <h4 className="font-medium text-gray-900">System Health</h4>
+              <button type="button" onClick={() => navigateToStep(4)} className="text-sm text-blue-600 hover:underline">Edit</button>
             </div>
-            {systemImpact && <p className="text-sm text-gray-700 mb-2">{systemImpact}</p>}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {IMPACT_CATEGORIES.map(({ key, label }) => (
-                <div key={key} className="text-sm">
-                  <span className="text-gray-500">{label}:</span>{' '}
-                  <span className="font-medium">{impactDetails[key as keyof typeof impactDetails]}/5</span>
-                </div>
-              ))}
-            </div>
+            {Object.keys(healthRatings).length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {Object.entries(healthRatings).map(([key, val]) => {
+                  const rating = HEALTH_RATINGS.find(r => r.value === val);
+                  const eqType = equipmentInfo.equipment_type;
+                  const comps = SYSTEM_HEALTH_COMPONENTS[eqType] || DEFAULT_HEALTH_COMPONENTS;
+                  const comp = comps.find(c => c.key === key);
+                  return (
+                    <div key={key} className="text-sm">
+                      <span className="text-gray-500">{comp?.label || key}:</span>{' '}
+                      <span className="font-medium">{rating?.label || val}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No ratings recorded</p>
+            )}
           </CardContent>
         </Card>
-
-        {/* Repair Options Summary */}
-        <Card>
-          <CardContent>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-gray-900">Repair Plans ({repairOptions.length})</h4>
-              <button type="button" onClick={() => setStep(5)} className="text-sm text-blue-600 hover:underline">Edit</button>
-            </div>
-            <div className="space-y-2">
-              {repairOptions.map((opt) => (
-                <div key={opt.label} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <div className="flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">{opt.label}</span>
-                    <span className="text-sm text-gray-700">{opt.name || 'Unnamed'}</span>
-                    {opt.is_recommended && (
-                      <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">Recommended</span>
-                    )}
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{formatCurrency(opt.subtotal)}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Upgrades Summary */}
-        {upgrades.length > 0 && (
-          <Card>
-            <CardContent>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-gray-900">Upgrades ({upgrades.length})</h4>
-                <button type="button" onClick={() => setStep(6)} className="text-sm text-blue-600 hover:underline">Edit</button>
-              </div>
-              <div className="space-y-1">
-                {upgrades.map((u, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span className="text-gray-700">{u.name || 'Unnamed'}</span>
-                    <span className="font-medium text-gray-900">{formatCurrency(u.price)}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Photos Summary */}
         {media.length > 0 && (
@@ -1237,7 +1492,7 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
             <CardContent>
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-medium text-gray-900">Photos/Videos ({media.length})</h4>
-                <button type="button" onClick={() => setStep(7)} className="text-sm text-blue-600 hover:underline">Edit</button>
+                <button type="button" onClick={() => navigateToStep(5)} className="text-sm text-blue-600 hover:underline">Edit</button>
               </div>
               <div className="flex gap-2 overflow-x-auto">
                 {media.slice(0, 6).map((m) => (
@@ -1254,6 +1509,62 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
                     +{media.length - 6}
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Upgrades Summary */}
+        {upgrades.length > 0 && (
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium text-gray-900">Upgrades ({upgrades.length})</h4>
+                <button type="button" onClick={() => navigateToStep(6)} className="text-sm text-blue-600 hover:underline">Edit</button>
+              </div>
+              <div className="space-y-1">
+                {upgrades.map((u, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="text-gray-700">{u.name || 'Unnamed'}</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(u.price)}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Selected Quote Option */}
+        {selectedOpt && (
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-xs">
+                    {selectedOpt.label}
+                  </span>
+                  <h4 className="font-medium text-gray-900">Selected: {selectedOpt.name || 'Unnamed Option'}</h4>
+                </div>
+                <button type="button" onClick={() => navigateToStep(7)} className="text-sm text-blue-600 hover:underline">Edit</button>
+              </div>
+              <div className="space-y-1.5">
+                {selectedOpt.items.map((item, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <div className="flex-1">
+                      <span className="text-gray-700">{item.description || 'No description'}</span>
+                      <span className="text-gray-400 ml-2 text-xs">
+                        {QUOTE_ITEM_CATEGORIES.find(c => c.key === item.category)?.label || item.category}
+                      </span>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-4">
+                      <span className="text-gray-500 text-xs">{item.quantity} x {formatCurrency(item.unit_price)}</span>
+                      <span className="font-medium text-gray-900 ml-2">{formatCurrency(item.total)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end text-lg font-bold text-gray-900 pt-2 mt-2 border-t border-gray-100">
+                Total: {formatCurrency(selectedOpt.subtotal)}
               </div>
             </CardContent>
           </Card>
@@ -1278,15 +1589,203 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
           onChange={(e) => setServiceDate(e.target.value)}
         />
 
+        {/* Signature */}
+        <div className="space-y-3">
+          <h4 className="font-medium text-gray-900">Customer Signature</h4>
+          <p className="text-xs text-gray-500">By signing below, the customer accepts the selected quote option.</p>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[120px] flex items-center justify-center">
+            {signatureDataUrl ? (
+              <div className="relative w-full">
+                <img src={signatureDataUrl} alt="Signature" className="w-full h-auto" />
+                <button
+                  type="button"
+                  onClick={clearSignature}
+                  className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-full"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="text-center w-full">
+                <p className="text-sm text-gray-400 mb-2">Draw signature below</p>
+                <canvas
+                  ref={sigCanvasRef}
+                  width={300}
+                  height={120}
+                  className="border border-gray-200 rounded bg-white touch-none mx-auto"
+                  style={{ maxWidth: '100%' }}
+                  onPointerDown={startSign}
+                  onPointerMove={drawSign}
+                  onPointerUp={endSign}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-3 pt-4 border-t">
           <Button variant="outline" onClick={() => saveDraft()} isLoading={saving}>
             <Save className="w-4 h-4 mr-2" /> Save Draft
           </Button>
-          <Button onClick={generateReport} isLoading={saving}>
+          <Button variant="secondary" onClick={generateReport} isLoading={saving}>
             <Check className="w-4 h-4 mr-2" /> Generate Report
           </Button>
+          <Button
+            onClick={() => { if (paymentAvailable) navigateToStep(9); }}
+            disabled={!paymentAvailable}
+          >
+            <CreditCard className="w-4 h-4 mr-2" /> Move to Payment
+          </Button>
         </div>
+      </div>
+    );
+  };
+
+  const renderStep9 = () => {
+    const selectedOpt = selectedOptionIdx !== null ? quoteOptions[selectedOptionIdx] : null;
+    const totalAmount = selectedOpt?.subtotal || 0;
+    const cashChange = cashTendered ? Math.max(0, Number(cashTendered) - totalAmount) : 0;
+
+    if (paymentComplete) {
+      return (
+        <div className="space-y-6 text-center py-12">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+            <Check className="w-8 h-8 text-green-600" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900">Payment Complete</h3>
+          <p className="text-gray-500">
+            {formatCurrency(totalAmount)} received via {paymentMethod === 'card' ? 'credit card' : paymentMethod}
+          </p>
+          <div className="flex justify-center gap-3 pt-4">
+            <Button variant="outline" onClick={onClose}>Close</Button>
+            <Button onClick={generateReport} isLoading={saving}>
+              <FileText className="w-4 h-4 mr-2" /> Generate Report
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    const paymentMethods: { key: PaymentMethod; label: string; icon: typeof CreditCard }[] = [
+      { key: 'card', label: 'Card', icon: CreditCard },
+      { key: 'cash', label: 'Cash', icon: DollarSign },
+      { key: 'check', label: 'Check', icon: FileText },
+      { key: 'invoice', label: 'Invoice', icon: Receipt },
+    ];
+
+    return (
+      <div className="space-y-6">
+        <h3 className="text-lg font-semibold text-gray-900">Payment</h3>
+
+        {/* Total */}
+        <div className="text-center py-4 bg-gray-50 rounded-lg">
+          <p className="text-sm text-gray-500">Amount Due</p>
+          <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalAmount)}</p>
+          {selectedOpt && (
+            <p className="text-sm text-gray-500 mt-1">Option {selectedOpt.label}: {selectedOpt.name || 'Unnamed'}</p>
+          )}
+        </div>
+
+        {/* Payment Method Selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+          <div className="grid grid-cols-4 gap-2">
+            {paymentMethods.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setPaymentMethod(key)}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-colors ${
+                  paymentMethod === key
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Payment Form */}
+        {paymentMethod === 'card' && (
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700">Card Details</label>
+            <div
+              id="card-container"
+              className="min-h-[90px] border border-gray-200 rounded-lg p-3"
+            />
+            {!squareCard && (
+              <p className="text-xs text-gray-400">Loading card form...</p>
+            )}
+          </div>
+        )}
+
+        {paymentMethod === 'cash' && (
+          <div className="space-y-3">
+            <Input
+              label="Amount Tendered"
+              type="number"
+              value={cashTendered}
+              onChange={(e) => setCashTendered(e.target.value)}
+              placeholder="0.00"
+            />
+            {Number(cashTendered) > 0 && (
+              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                <span className="text-sm text-gray-700">Change Due</span>
+                <span className="text-lg font-bold text-green-700">{formatCurrency(cashChange)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {paymentMethod === 'check' && (
+          <Input
+            label="Check Number"
+            value={checkNumber}
+            onChange={(e) => setCheckNumber(e.target.value)}
+            placeholder="Enter check number"
+          />
+        )}
+
+        {paymentMethod === 'invoice' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Note</label>
+            <textarea
+              value={invoiceNote}
+              onChange={(e) => setInvoiceNote(e.target.value)}
+              rows={3}
+              placeholder="Add any notes for the invoice..."
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">An invoice will be generated and sent to the customer.</p>
+          </div>
+        )}
+
+        {paymentError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700">{paymentError}</p>
+          </div>
+        )}
+
+        {/* Process Payment Button */}
+        <Button
+          onClick={processPayment}
+          isLoading={processingPayment}
+          disabled={
+            processingPayment ||
+            (paymentMethod === 'card' && !squareCard) ||
+            (paymentMethod === 'cash' && Number(cashTendered) < totalAmount) ||
+            (paymentMethod === 'check' && !checkNumber.trim())
+          }
+          className="w-full"
+          size="lg"
+        >
+          <CreditCard className="w-5 h-5 mr-2" />
+          {paymentMethod === 'invoice' ? 'Send Invoice' : `Process ${formatCurrency(totalAmount)}`}
+        </Button>
       </div>
     );
   };
@@ -1301,6 +1800,7 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
       case 6: return renderStep6();
       case 7: return renderStep7();
       case 8: return renderStep8();
+      case 9: return renderStep9();
       default: return null;
     }
   };
@@ -1327,17 +1827,23 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
             const stepNum = i + 1;
             const isActive = step === stepNum;
             const isCompleted = step > stepNum;
+            const isReview = stepNum === 8;
+            const isPayment = stepNum === 9;
+            const canClick = isPayment ? paymentAvailable : isReview ? reviewAvailable : true;
             return (
               <button
                 key={s}
                 type="button"
-                onClick={() => (isCompleted || isActive) && setStep(stepNum)}
+                onClick={() => canClick && navigateToStep(stepNum)}
+                disabled={!canClick}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   isActive
                     ? 'bg-blue-600 text-white'
-                    : isCompleted
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                    : 'bg-gray-200 text-gray-500'
+                    : (isReview && !reviewAvailable) || (isPayment && !paymentAvailable)
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                    : visitedSteps.has(stepNum)
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer'
                 }`}
               >
                 {isCompleted ? <Check className="w-3 h-3" /> : <span>{stepNum}</span>}
@@ -1359,10 +1865,34 @@ export function ServiceReportBuilder({ reportId, onClose, onSaved }: ServiceRepo
           <Button variant="ghost" onClick={goBack} disabled={step === 1}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <span className="text-sm text-gray-500">Step {step} of 8</span>
-          <Button onClick={goNext}>
-            Next <ChevronRight className="w-4 h-4 ml-1" />
+          <span className="text-sm text-gray-500">Step {step} of 9</span>
+          {step === 7 && !reviewAvailable ? (
+            <div className="text-xs text-amber-600 font-medium max-w-[140px] text-right">
+              {!hasMedia ? 'Upload photos first' : selectedOptionIdx === null ? 'Select a quote option' : 'Visit all tabs to continue'}
+            </div>
+          ) : (
+            <Button onClick={goNext}>
+              Next <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          )}
+        </div>
+      )}
+      {step === 8 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-white flex-shrink-0">
+          <Button variant="ghost" onClick={goBack}>
+            <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
+          <span className="text-sm text-gray-500">Step 8 of 9</span>
+          <div />
+        </div>
+      )}
+      {step === 9 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-white flex-shrink-0">
+          <Button variant="ghost" onClick={goBack}>
+            <ChevronLeft className="w-4 h-4 mr-1" /> Back
+          </Button>
+          <span className="text-sm text-gray-500">Step 9 of 9</span>
+          <div />
         </div>
       )}
     </div>

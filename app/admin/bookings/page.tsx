@@ -18,6 +18,7 @@ import {
   Eye,
   Calendar,
   List,
+  Wrench,
 } from 'lucide-react';
 
 interface Booking {
@@ -68,6 +69,8 @@ export default function BookingsPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const [linkedBookingIds, setLinkedBookingIds] = useState<Set<string>>(new Set());
+  const [creatingWO, setCreatingWO] = useState<string | null>(null);
 
   // Add booking form state
   const [newBooking, setNewBooking] = useState({
@@ -88,14 +91,25 @@ export default function BookingsPage() {
     if (!groupId) return;
     try {
       const supabase = createClient();
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('group_id', groupId)
-        .order('start_time', { ascending: false });
+      const [bookingsResult, woResult] = await Promise.all([
+        supabase
+          .from('bookings')
+          .select('*')
+          .eq('group_id', groupId)
+          .order('start_time', { ascending: false }),
+        supabase
+          .from('work_orders')
+          .select('booking_id')
+          .eq('group_id', groupId)
+          .not('booking_id', 'is', null),
+      ]);
 
-      if (error) throw error;
-      setBookings(data || []);
+      if (bookingsResult.error) throw bookingsResult.error;
+      setBookings(bookingsResult.data || []);
+
+      if (woResult.data) {
+        setLinkedBookingIds(new Set(woResult.data.map((wo: { booking_id: string | null }) => wo.booking_id!)));
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
@@ -159,6 +173,35 @@ export default function BookingsPage() {
       if (selectedBooking?.id === id) setSelectedBooking(data);
     } catch (err) {
       console.error('Failed to update booking:', err);
+    }
+  };
+
+  const createWOFromBooking = async (booking: Booking) => {
+    if (!groupId) return;
+    setCreatingWO(booking.id);
+    try {
+      const supabase = createClient();
+      const scheduledDate = booking.start_time.split('T')[0];
+      const { error } = await supabase.from('work_orders').insert({
+        booking_id: booking.id,
+        customer_id: (booking as unknown as Record<string, unknown>).customer_id || null,
+        description: `${booking.service_type} - ${booking.name}`,
+        scheduled_date: scheduledDate,
+        group_id: groupId,
+        status: 'assigned',
+        priority: 'normal',
+      } as Record<string, unknown>);
+
+      if (error) throw error;
+      setLinkedBookingIds((prev) => {
+        const next = new Set(prev);
+        next.add(booking.id);
+        return next;
+      });
+    } catch (err) {
+      console.error('Failed to create work order:', err);
+    } finally {
+      setCreatingWO(null);
     }
   };
 
@@ -329,9 +372,26 @@ export default function BookingsPage() {
                             {formatDate(booking.start_time)} at {formatTime(booking.start_time)}
                           </p>
                         </div>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[booking.status]}`}>
-                          {booking.status === 'no-show' ? 'No-Show' : booking.status}
-                        </span>
+                        <div className="flex flex-col items-end gap-1.5">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[booking.status]}`}>
+                            {booking.status === 'no-show' ? 'No-Show' : booking.status}
+                          </span>
+                          {linkedBookingIds.has(booking.id) ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                              <CheckCircle2 className="w-3 h-3" />
+                              WO Created
+                            </span>
+                          ) : (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); createWOFromBooking(booking); }}
+                              disabled={creatingWO === booking.id}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                            >
+                              <Wrench className="w-3 h-3" />
+                              {creatingWO === booking.id ? 'Creating...' : 'Create WO'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -347,6 +407,7 @@ export default function BookingsPage() {
                         <th className="px-6 py-3 font-medium">Service</th>
                         <th className="px-6 py-3 font-medium">Date/Time</th>
                         <th className="px-6 py-3 font-medium">Status</th>
+                        <th className="px-6 py-3 font-medium">Work Order</th>
                         <th className="px-6 py-3 font-medium">Actions</th>
                       </tr>
                     </thead>
@@ -364,6 +425,23 @@ export default function BookingsPage() {
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[booking.status]}`}>
                               {booking.status === 'no-show' ? 'No-Show' : booking.status}
                             </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            {linkedBookingIds.has(booking.id) ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                <CheckCircle2 className="w-3 h-3" />
+                                WO Created
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => createWOFromBooking(booking)}
+                                disabled={creatingWO === booking.id}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                              >
+                                <Wrench className="w-3 h-3" />
+                                {creatingWO === booking.id ? 'Creating...' : 'Create WO'}
+                              </button>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                             <button
@@ -512,6 +590,26 @@ export default function BookingsPage() {
                   </Button>
                 ))}
               </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">Work Order</p>
+              {linkedBookingIds.has(selectedBooking.id) ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-700">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Work Order Created
+                </span>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => createWOFromBooking(selectedBooking)}
+                  disabled={creatingWO === selectedBooking.id}
+                >
+                  <Wrench className="w-4 h-4 mr-2" />
+                  {creatingWO === selectedBooking.id ? 'Creating...' : 'Create Work Order'}
+                </Button>
+              )}
             </div>
           </div>
         )}

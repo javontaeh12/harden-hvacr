@@ -26,6 +26,7 @@ import {
   Bell,
   DollarSign,
   Truck,
+  Smartphone,
   HardHat,
   BarChart3,
   FileSignature,
@@ -46,6 +47,7 @@ const navigation = [
   { name: 'Documents', href: '/admin/documents', icon: FileText },
   { name: 'AI Helper', href: '/admin/ai-helper', icon: MessageSquare },
   { name: 'Truck', href: '/admin/truck', icon: Truck },
+  { name: 'Service Web App', href: '/admin/tech', icon: Smartphone },
 ];
 
 const hvacToolsNavigation = [

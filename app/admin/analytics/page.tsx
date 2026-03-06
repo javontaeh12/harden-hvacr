@@ -75,7 +75,7 @@ export default function AnalyticsPage() {
     const [paymentsRes, bookingsRes, workOrdersRes] = await Promise.all([
       supabase.from('payments').select('id, amount, method, status, created_at, customer_id').eq('group_id', groupId!).order('created_at', { ascending: false }),
       supabase.from('bookings').select('id, service_type, status, start_time, name').eq('group_id', groupId!).order('start_time', { ascending: false }),
-      supabase.from('work_orders').select('id, assigned_tech_id, status, completed_at, created_at, parts_used, profiles:assigned_tech_id(full_name)').eq('group_id', groupId!),
+      supabase.from('work_orders').select('id, assigned_tech_id, status, completed_at, created_at, parts_used').eq('group_id', groupId!),
     ]);
     setPayments(paymentsRes.data || []);
     setBookings(bookingsRes.data || []);
