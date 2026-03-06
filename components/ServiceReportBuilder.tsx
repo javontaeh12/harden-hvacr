@@ -30,6 +30,7 @@ import {
   DollarSign,
   FileText,
   Receipt,
+  ExternalLink,
 } from 'lucide-react';
 import type {
   ServiceReportMedia,
@@ -909,6 +910,31 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
               rows={3}
               className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+          </div>
+
+          {/* Warranty Lookup Quick Links */}
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Warranty Lookup</label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { brand: 'Carrier', url: 'https://www.carrier.com/residential/en/us/warranty-lookup/' },
+                { brand: 'Goodman', url: 'https://www.goodmanmfg.com/warranty-lookup' },
+                { brand: 'Lennox', url: 'https://www.lennox.com/residential/owners/assistance/warranty/' },
+                { brand: 'Rheem', url: 'https://rheem.registermyunit.com/en-US/warranty/brand?brand=rheem' },
+                { brand: 'York', url: 'https://wtyprod.jci.com/jci/warranty/public/warrantyreg/index.html' },
+              ].map(link => (
+                <a
+                  key={link.brand}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+                >
+                  {link.brand}
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       )}
