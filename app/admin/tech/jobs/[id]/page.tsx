@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import StatusProgressBar from '@/components/tech/StatusProgressBar';
 import PhotoCapture from '@/components/tech/PhotoCapture';
 import PartsLogger from '@/components/tech/PartsLogger';
 import SignaturePad from '@/components/tech/SignaturePad';
-import { Phone, MapPin, ArrowLeft, FileText, Camera, Package, PenLine, MessageSquare, Receipt, DollarSign } from 'lucide-react';
+import { Phone, MapPin, ArrowLeft, FileText, Camera, Package, PenLine, MessageSquare, Receipt, DollarSign, CheckCircle2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface WorkOrder {
@@ -43,6 +43,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [photos, setPhotos] = useState<string[]>([]);
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [justCompleted, setJustCompleted] = useState(false);
+  const completedRef = useRef<HTMLDivElement>(null);
 
   // Load notes draft from server on mount
   useEffect(() => {
@@ -155,7 +157,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const handleAddNote = async () => {
     if (!job || !noteText.trim()) return;
     const timestamp = new Date().toLocaleString();
-    const newNote = `[${timestamp}] ${noteText.trim()}`;
+    const techName = profile?.full_name || 'Tech';
+    const newNote = `[${timestamp} - ${techName}] ${noteText.trim()}`;
     const updatedNotes = job.notes ? `${job.notes}\n${newNote}` : newNote;
 
     const res = await fetch('/api/work-orders', {
@@ -203,6 +206,10 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
     if (res.ok) {
       setJob({ ...job, status: 'completed', completed_at: new Date().toISOString() });
+      setJustCompleted(true);
+      setTimeout(() => {
+        completedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     }
     setSaving(false);
   };
@@ -227,9 +234,9 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <div className="pt-4 pb-6 space-y-4">
+    <div className="pt-4 pb-6 space-y-4 w-full overflow-x-hidden">
       {/* Back button */}
-      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-steel">
+      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-steel active:text-navy transition-colors">
         <ArrowLeft className="w-4 h-4" />
         Back
       </button>
@@ -245,13 +252,13 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
         <h2 className="font-semibold text-navy">{job.customers?.full_name || 'Unknown Customer'}</h2>
         <p className="text-sm text-gray-500">{job.description}</p>
-        <div className="flex gap-2 pt-1">
+        <div className="grid grid-cols-4 gap-2 pt-1">
           {job.customers?.phone && (
             <a
               href={`tel:${job.customers.phone}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 text-green-700 text-xs font-medium"
+              className="flex items-center justify-center gap-1 px-2 py-2 rounded-lg bg-green-50 text-green-700 text-xs font-medium active:bg-green-100 transition-colors"
             >
-              <Phone className="w-3.5 h-3.5" />
+              <Phone className="w-3.5 h-3.5 flex-shrink-0" />
               Call
             </a>
           )}
@@ -260,24 +267,24 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               href={`https://maps.google.com/?q=${encodeURIComponent(job.customers.address)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-light text-accent text-xs font-medium"
+              className="flex items-center justify-center gap-1 px-2 py-2 rounded-lg bg-accent-light text-accent text-xs font-medium active:bg-blue-100 transition-colors"
             >
-              <MapPin className="w-3.5 h-3.5" />
+              <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
               Maps
             </a>
           )}
           <Link
             href={`/admin/tech/report/${job.id}`}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 text-xs font-medium"
+            className="flex items-center justify-center gap-1 px-2 py-2 rounded-lg bg-purple-50 text-purple-700 text-xs font-medium active:bg-purple-100 transition-colors"
           >
-            <FileText className="w-3.5 h-3.5" />
+            <FileText className="w-3.5 h-3.5 flex-shrink-0" />
             Report
           </Link>
           <Link
             href={`/admin/tech/jobs/${job.id}/quote`}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ember/10 text-ember text-xs font-medium"
+            className="flex items-center justify-center gap-1 px-2 py-2 rounded-lg bg-ember/10 text-ember text-xs font-medium active:bg-ember/20 transition-colors"
           >
-            <Receipt className="w-3.5 h-3.5" />
+            <Receipt className="w-3.5 h-3.5 flex-shrink-0" />
             Quote
           </Link>
         </div>
@@ -289,8 +296,8 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-medium transition ${
-              activeTab === tab.key ? 'bg-white shadow-sm text-navy' : 'text-steel'
+            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-medium transition-all ${
+              activeTab === tab.key ? 'bg-white shadow-sm text-navy scale-[1.02]' : 'text-steel active:text-navy'
             }`}
           >
             <tab.icon className="w-3.5 h-3.5" />
@@ -313,6 +320,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         )}
         {activeTab === 'notes' && (
           <div className="space-y-3">
+            <p className="text-xs text-gray-400 italic">Notes are visible to techs and office only, not the customer.</p>
             {job.notes && (
               <div className="bg-gray-50 rounded-lg p-3 max-h-48 overflow-y-auto">
                 {job.notes.split('\n').map((line, i) => (
@@ -332,7 +340,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               <button
                 onClick={handleAddNote}
                 disabled={!noteText.trim()}
-                className="px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-40"
+                className="px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-40 active:bg-blue-700 transition-colors"
               >
                 Add
               </button>
@@ -352,7 +360,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       {['in_progress', 'completed'].includes(job.status) && (
         <Link
           href={`/admin/tech/jobs/${job.id}/payment`}
-          className="w-full py-3 rounded-xl bg-accent text-white font-semibold hover:bg-accent-dark active:bg-accent-dark flex items-center justify-center gap-2"
+          className="w-full py-3 rounded-xl bg-accent text-white font-semibold active:bg-accent-dark flex items-center justify-center gap-2 transition-colors"
         >
           <DollarSign className="w-5 h-5" />
           Collect Payment
@@ -364,10 +372,41 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         <button
           onClick={handleCompleteJob}
           disabled={saving}
-          className="w-full py-3 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 active:bg-green-800 disabled:opacity-50"
+          className="w-full py-3 rounded-xl bg-green-600 text-white font-semibold active:bg-green-800 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
         >
-          {saving ? 'Saving...' : job.signature_url ? 'Complete Job' : 'Sign & Complete Job'}
+          {saving ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Completing...
+            </>
+          ) : job.signature_url ? 'Complete Job' : 'Sign & Complete Job'}
         </button>
+      )}
+
+      {/* Completed confirmation — slides into view */}
+      {justCompleted && (
+        <div
+          ref={completedRef}
+          className="bg-green-50 border border-green-200 rounded-xl p-6 text-center animate-[slideUp_0.3s_ease-out]"
+        >
+          <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
+          <h3 className="text-lg font-bold text-green-800 mb-1">Job Completed!</h3>
+          <p className="text-sm text-green-600 mb-4">Great work. The job has been marked as completed.</p>
+          <div className="flex gap-3">
+            <Link
+              href={`/admin/tech/jobs/${job.id}/complete`}
+              className="flex-1 py-2.5 rounded-lg bg-green-600 text-white text-sm font-semibold active:bg-green-700 transition-colors text-center"
+            >
+              View Summary
+            </Link>
+            <Link
+              href="/admin/tech/jobs"
+              className="flex-1 py-2.5 rounded-lg bg-white border border-green-300 text-green-700 text-sm font-semibold active:bg-green-50 transition-colors text-center"
+            >
+              Back to Jobs
+            </Link>
+          </div>
+        </div>
       )}
     </div>
   );

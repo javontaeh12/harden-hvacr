@@ -117,16 +117,6 @@ export function LowStockNotification() {
         )}
       >
         <Bell className="w-5 h-5 text-gray-600" />
-        {(lowStockItems.length + pendingUsers.length) > 0 && (
-          <span
-            className={cn(
-              'absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center text-xs font-bold rounded-full',
-              hasNew ? 'bg-red-500 text-white animate-pulse' : 'bg-red-500 text-white'
-            )}
-          >
-            {(lowStockItems.length + pendingUsers.length) > 9 ? '9+' : lowStockItems.length + pendingUsers.length}
-          </span>
-        )}
       </button>
 
       {isOpen && (

@@ -177,16 +177,18 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile menu button — fixed full-width at bottom */}
+      {/* Mobile menu button — fixed at bottom */}
       {!menuOpen && (
-        <button
-          onClick={() => { setMenuOpen(true); setServicesOpen(false); }}
-          className="md:hidden fixed bottom-0 left-0 right-0 z-50 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] bg-[var(--ember)] text-white shadow-[0_-2px_10px_rgba(0,0,0,0.15)] flex items-center justify-center gap-2 active:bg-[var(--ember-dark)] transition-colors"
-          aria-label="Open menu"
-        >
-          <MenuIcon className="w-5 h-5" />
-          <span className="text-sm font-semibold">Menu</span>
-        </button>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 pointer-events-none">
+          <button
+            onClick={() => { setMenuOpen(true); setServicesOpen(false); }}
+            className="pointer-events-auto w-full py-3 rounded-xl bg-[var(--ember)]/85 backdrop-blur-sm text-white shadow-lg shadow-black/15 flex items-center justify-center gap-2 active:bg-[var(--ember)] transition-colors"
+            aria-label="Open menu"
+          >
+            <MenuIcon className="w-5 h-5" />
+            <span className="text-sm font-semibold">Menu</span>
+          </button>
+        </div>
       )}
 
       {/* Mobile bottom sheet menu */}
@@ -262,7 +264,7 @@ export default function Navbar() {
               <Link
                 href="/request"
                 onClick={() => { setMenuOpen(false); setServicesOpen(false); }}
-                className="flex items-center justify-center gap-2 w-full rounded-xl bg-[var(--accent)] px-4 py-3 text-base font-semibold text-white active:bg-[var(--accent-dark)] transition-colors"
+                className="flex items-center justify-center gap-2 w-full rounded-xl bg-[var(--ember)] px-4 py-3 text-base font-semibold text-white active:bg-[var(--ember-dark)] transition-colors"
               >
                 Request Service
               </Link>

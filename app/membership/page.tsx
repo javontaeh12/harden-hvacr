@@ -141,8 +141,11 @@ export default function MembershipPage() {
               <div className="w-full h-px bg-[var(--gold)]/20 mb-5" style={{ backgroundImage: 'repeating-linear-gradient(90deg, var(--gold) 0, var(--gold) 8px, transparent 8px, transparent 16px)' }} />
               <p className="text-sm text-[var(--navy)]/60 leading-relaxed">
                 Refer a friend or neighbor. When they join Priority Membership,
-                you earn <span className="font-bold text-[var(--navy)]">$25</span>.{' '}
+                you earn <span className="font-bold text-[var(--navy)]">$25 cash</span>.{' '}
                 <span className="font-bold text-[var(--ember)]">No limit.</span>
+              </p>
+              <p className="text-sm text-[var(--navy)]/60 leading-relaxed mt-2">
+                Plus, your referrals get <span className="font-bold text-[var(--navy)]">5-10% off</span> their first service visit.
               </p>
             </div>
           </div>
@@ -242,6 +245,8 @@ export default function MembershipPage() {
                     'Dedicated technician',
                     'Up to $1,000 off system upgrade',
                     '50% off service fees',
+                    'Earn $25 cash for every referral that joins Priority Membership',
+                    'Your referrals save 5-10% off their first service visit',
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-3">
                       <span className="flex-shrink-0 mt-0.5 w-6 h-6 rounded-full bg-[var(--gold)]/20 flex items-center justify-center">

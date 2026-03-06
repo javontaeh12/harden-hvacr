@@ -362,6 +362,7 @@ export interface ServiceUnit {
     notes: string;
   };
   problem_found: string;
+  secondary_problems: string[];
   problem_details: {
     severity: 'low' | 'medium' | 'high' | 'critical';
     symptoms: string[];

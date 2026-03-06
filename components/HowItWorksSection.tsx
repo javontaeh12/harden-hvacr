@@ -45,11 +45,8 @@ export default function HowItWorksSection() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
           {steps.map((step) => (
             <div key={step.number} className="text-center group">
-              <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md border border-[var(--border)] mb-4 group-hover:shadow-lg transition-shadow">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-md border border-[var(--border)] mb-4 group-hover:shadow-lg transition-shadow">
                 <step.icon className="w-7 h-7 text-[var(--accent)]" />
-                <span className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-[var(--ember)] text-white text-xs font-bold flex items-center justify-center shadow-lg">
-                  {step.number}
-                </span>
               </div>
               <h3 className="text-base font-bold text-[var(--navy)] mb-1.5">
                 {step.title}

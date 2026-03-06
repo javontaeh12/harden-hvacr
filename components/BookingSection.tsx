@@ -1,11 +1,9 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import BookingForm from './BookingForm';
 
 export default function BookingSection() {
-  const router = useRouter();
-
   return (
     <section id="request" className="py-10 sm:py-28 bg-[var(--ice)]">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
@@ -19,14 +17,14 @@ export default function BookingSection() {
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg shadow-black/5 border border-[var(--border)] p-4 sm:p-10 relative">
-          <BookingForm />
-          {/* Invisible overlay — captures clicks and sends user to fullscreen form */}
-          <div
-            className="absolute inset-0 z-10 cursor-text rounded-2xl"
-            onClick={() => router.push('/request')}
-          />
-        </div>
+        <Link
+          href="/request"
+          className="block bg-white rounded-2xl shadow-lg shadow-black/5 border border-[var(--border)] p-4 sm:p-10 cursor-pointer"
+        >
+          <div className="pointer-events-none">
+            <BookingForm />
+          </div>
+        </Link>
       </div>
     </section>
   );

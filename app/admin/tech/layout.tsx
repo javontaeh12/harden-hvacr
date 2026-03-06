@@ -3,7 +3,7 @@ import Image from 'next/image';
 
 export default function TechLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-background pb-[calc(3.5rem+env(safe-area-inset-bottom))] overflow-x-hidden">
       {/* Branded Top Header */}
       <header className="bg-navy pt-[env(safe-area-inset-top)] sticky top-0 z-40">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -18,7 +18,7 @@ export default function TechLayout({ children }: { children: React.ReactNode }) 
           <span className="text-[10px] font-semibold text-ember uppercase tracking-widest">Tech Portal</span>
         </div>
       </header>
-      <div className="max-w-2xl mx-auto px-4">
+      <div className="max-w-2xl mx-auto px-4 overflow-x-hidden">
         {children}
       </div>
       <TechBottomNav />

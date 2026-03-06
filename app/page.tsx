@@ -16,8 +16,8 @@ export default function HomePage() {
         <PromoBanner />
         <HowItWorksSection />
         <BookingSection />
-        <WhyChooseUs />
         <MembershipSection />
+        <WhyChooseUs />
         <TestimonialsSection />
       </main>
       <FooterSection />

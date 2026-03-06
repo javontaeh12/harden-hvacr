@@ -103,11 +103,8 @@ export default async function ServicePage({
               const StepIcon = processIcons[i] || CheckIcon;
               return (
                 <div key={step.number} className="text-center">
-                  <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white border border-[var(--border)] shadow-sm mb-5">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white border border-[var(--border)] shadow-sm mb-5">
                     <StepIcon className="w-7 h-7 text-[var(--accent)]" />
-                    <span className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-[var(--ember)] text-white text-xs font-bold flex items-center justify-center shadow-md">
-                      {step.number}
-                    </span>
                   </div>
                   <h3 className="text-lg font-bold text-[var(--navy)] mb-2">
                     {step.title}

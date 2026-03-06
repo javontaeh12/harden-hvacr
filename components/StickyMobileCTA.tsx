@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { PhoneIcon } from './icons';
 
 export default function StickyMobileCTA() {
@@ -13,12 +14,12 @@ export default function StickyMobileCTA() {
           <PhoneIcon className="w-4 h-4" />
           Call Now
         </a>
-        <a
-          href="#request"
+        <Link
+          href="/request"
           className="flex-1 flex items-center justify-center gap-2 py-3.5 text-white font-bold text-sm bg-[var(--navy)] active:bg-[var(--navy-light)] transition-colors"
         >
           Book Service
-        </a>
+        </Link>
       </div>
     </div>
   );

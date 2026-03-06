@@ -4,7 +4,7 @@ import nodemailer from 'nodemailer';
 export async function POST(request: Request) {
   try {
     const { name, email } = await request.json();
-    const origin = request.headers.get('origin') || 'https://harden-hvacr.vercel.app';
+    const origin = request.headers.get('origin') || 'https://hardenhvacr.com';
 
     if (!process.env.GMAIL_APP_PASSWORD || !process.env.ADMIN_EMAIL) {
       console.error('Email not configured: GMAIL_APP_PASSWORD or ADMIN_EMAIL missing');

@@ -7,6 +7,8 @@ const benefits = [
   'Annual system tune-ups included',
   'Extended parts warranty on all work',
   'Dedicated technician who knows your system',
+  'Earn $25 cash for every referral that purchases a Priority Membership',
+  'Your referrals save 5-10% off their first service visit',
 ];
 
 export default function MembershipSection() {
@@ -18,7 +20,7 @@ export default function MembershipSection() {
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
-          <span className="inline-block text-xs font-bold uppercase tracking-[0.25em] text-[var(--gold)] mb-3">Save More</span>
+          <span className="inline-block text-xs font-bold uppercase tracking-[0.25em] text-[var(--gold)] mb-3">Earn Cash &amp; Save More</span>
           <h2 className="font-[var(--font-display)] text-4xl sm:text-5xl tracking-wide text-white" style={{ fontWeight: 700 }}>
             PRIORITY MEMBERSHIP
           </h2>

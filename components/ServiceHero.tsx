@@ -14,12 +14,12 @@ export default function ServiceHero({ service }: ServiceHeroProps) {
     .join(' ');
 
   return (
-    <section className="relative pt-16 overflow-hidden">
+    <section className="relative pt-4 sm:pt-16 overflow-hidden">
       {/* Full navy background */}
       <div className="absolute inset-0 bg-gradient-to-br from-[var(--navy)] via-[var(--navy-light)] to-[var(--navy)]" />
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[var(--accent)]/10 rounded-full blur-[120px]" />
 
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-12 pb-20 sm:pt-16 sm:pb-24">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4 pb-12 sm:pt-16 sm:pb-24">
         <div>
           {/* Content */}
           <div className="text-center">
@@ -54,7 +54,7 @@ export default function ServiceHero({ service }: ServiceHeroProps) {
             {/* CTAs */}
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/#request"
+                href="/request"
                 className="inline-flex items-center justify-center rounded-full bg-[var(--ember)] px-8 py-4 text-base font-bold text-white hover:bg-[var(--ember-dark)] transition-all shadow-lg shadow-[var(--ember)]/30"
               >
                 Request This Service

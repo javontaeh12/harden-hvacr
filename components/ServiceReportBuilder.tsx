@@ -33,6 +33,16 @@ import {
   ExternalLink,
   Clock,
   Zap,
+  Info,
+  ShieldCheck,
+  Sparkles,
+  ThermometerSun,
+  Wind,
+  Droplets,
+  BatteryCharging,
+  Gauge,
+  Wrench,
+  CalendarCheck,
 } from 'lucide-react';
 import type {
   ServiceReportMedia,
@@ -99,6 +109,7 @@ function createDefaultUnit(): ServiceUnit {
     equipment_info: { ...EMPTY_EQUIPMENT_INFO },
     warranty_info: { ...EMPTY_WARRANTY_INFO },
     problem_found: '',
+    secondary_problems: [],
     problem_details: { severity: 'medium', symptoms: [], areas_affected: [] },
     health_ratings: {},
     health_notes: {},
@@ -118,6 +129,148 @@ const UPGRADE_CATALOG: UpgradeItem[] = [
   { name: 'Capacitor Upgrade', price: 125, priority: 'high', benefits: ['Prevents motor failure', 'Improves efficiency', 'Turbo rated for longer life'] },
   { name: 'Condensate Pump', price: 225, priority: 'medium', benefits: ['Reliable drainage', 'Quiet operation', 'Prevents water damage'] },
 ];
+
+interface UpgradeFlyer {
+  headline: string;
+  tagline: string;
+  description: string;
+  keyBenefits: { title: string; detail: string }[];
+  whyItMatters: string;
+  icon: typeof Zap;
+}
+
+const UPGRADE_FLYERS: Record<string, UpgradeFlyer> = {
+  'UV Light Air Purifier': {
+    headline: 'Breathe Cleaner, Healthier Air',
+    tagline: 'Hospital-grade air purification for your home',
+    description: 'A UV light air purifier installs directly inside your HVAC system and uses ultraviolet germicidal irradiation (UVGI) to neutralize airborne pathogens as air circulates through your ducts. It runs silently 24/7 with virtually zero maintenance.',
+    keyBenefits: [
+      { title: 'Kills 99.9% of Mold & Bacteria', detail: 'UV-C light destroys the DNA of mold spores, bacteria, and viruses before they circulate through your home.' },
+      { title: 'Reduces Allergens & Odors', detail: 'Breaks down volatile organic compounds (VOCs), pet dander, and musty odors at the source.' },
+      { title: 'Protects Your HVAC System', detail: 'Prevents biological growth on the evaporator coil, keeping your system efficient and extending its lifespan.' },
+      { title: 'Low Maintenance', detail: 'Bulb replacement only once every 1-2 years. No filters to change, no extra energy costs.' },
+    ],
+    whyItMatters: 'Indoor air can be 2-5x more polluted than outdoor air. A UV purifier works with your existing HVAC system to continuously clean the air your family breathes — especially important for allergy sufferers, children, and anyone with respiratory concerns.',
+    icon: Sparkles,
+  },
+  'Smart Thermostat': {
+    headline: 'Save Money While Staying Comfortable',
+    tagline: 'Intelligent climate control that pays for itself',
+    description: 'A smart thermostat learns your schedule, adjusts temperatures automatically, and lets you control your home\'s comfort from anywhere using your phone. It integrates with your existing HVAC system and installs in under an hour.',
+    keyBenefits: [
+      { title: 'Up to 23% Energy Savings', detail: 'Automatically adjusts when you\'re away or sleeping, cutting heating and cooling costs significantly.' },
+      { title: 'Control From Anywhere', detail: 'Adjust temperature from your phone whether you\'re in bed or on vacation. Get alerts if something seems wrong.' },
+      { title: 'Learning Schedule', detail: 'Adapts to your routine over time and makes automatic adjustments so you don\'t have to think about it.' },
+      { title: 'HVAC Health Monitoring', detail: 'Tracks system runtime, efficiency trends, and sends maintenance reminders so small issues don\'t become big ones.' },
+    ],
+    whyItMatters: 'Most homeowners overspend on heating and cooling because their thermostat can\'t adapt. A smart thermostat eliminates wasted energy and keeps your home at the perfect temperature — it typically pays for itself within the first year.',
+    icon: ThermometerSun,
+  },
+  'Surge Protector': {
+    headline: 'Protect Your Investment',
+    tagline: 'One power surge can destroy your entire HVAC system',
+    description: 'An HVAC surge protector installs at your outdoor unit and shields the compressor, control board, and motors from voltage spikes caused by lightning, grid fluctuations, or power outages. It\'s your system\'s insurance policy.',
+    keyBenefits: [
+      { title: 'Prevents Catastrophic Damage', detail: 'A single power surge can fry a compressor ($2,000+) or control board ($500+). A surge protector stops it before it reaches your equipment.' },
+      { title: 'Extends System Lifespan', detail: 'Even minor voltage fluctuations cause cumulative wear. Consistent, clean power keeps components running longer.' },
+      { title: 'Always-On Protection', detail: 'Works 24/7 automatically — no action needed from you. LED indicator confirms it\'s actively protecting.' },
+      { title: 'Affordable Peace of Mind', detail: 'A fraction of the cost of replacing damaged components. One of the best ROI upgrades you can make.' },
+    ],
+    whyItMatters: 'Power surges happen more often than you think — not just from lightning, but from your utility grid switching, large appliances cycling, and nearby construction. Your HVAC system is the most expensive appliance in your home. Protect it.',
+    icon: ShieldCheck,
+  },
+  'Duct Sealing': {
+    headline: 'Stop Paying to Heat & Cool Your Attic',
+    tagline: 'Up to 30% of your conditioned air never reaches your rooms',
+    description: 'Professional duct sealing closes gaps, cracks, and disconnected joints in your ductwork using mastic sealant and metal tape. This ensures the air your system produces actually reaches your living spaces instead of leaking into unconditioned areas.',
+    keyBenefits: [
+      { title: 'Reduces Energy Loss Up to 30%', detail: 'Leaky ducts are the #1 cause of energy waste in most homes. Sealing them means your system works less to achieve the same comfort.' },
+      { title: 'Even Temperatures Throughout', detail: 'Eliminates hot and cold spots by ensuring balanced airflow to every room in your home.' },
+      { title: 'Improved Indoor Air Quality', detail: 'Sealed ducts prevent dust, insulation fibers, and attic contaminants from being pulled into your air supply.' },
+      { title: 'Less Wear on Your System', detail: 'When air reaches where it\'s supposed to go, your system doesn\'t have to run as long or as hard — extending its life.' },
+    ],
+    whyItMatters: 'Most homeowners don\'t realize their ductwork has gaps. If certain rooms are always too hot or too cold, or your energy bills seem high for your home size, leaky ducts are almost certainly part of the problem.',
+    icon: Wind,
+  },
+  'Air Scrubber': {
+    headline: 'The Ultimate Indoor Air Purification',
+    tagline: 'ActivePure® technology used by NASA',
+    description: 'The Air Scrubber by Aerus uses proprietary ActivePure® technology — originally developed for NASA — to actively seek out and destroy contaminants in your air AND on surfaces. Unlike passive filters, it sends purifying molecules throughout your entire home.',
+    keyBenefits: [
+      { title: 'Removes 99% of Airborne Contaminants', detail: 'Eliminates bacteria, viruses, mold, pollen, and VOCs from the air you breathe — not just what passes through a filter.' },
+      { title: 'Cleans Surfaces Too', detail: 'ActivePure molecules travel through your home and reduce contaminants on countertops, doorknobs, and other surfaces.' },
+      { title: 'Eliminates Odors at the Source', detail: 'Cooking smells, pet odors, and chemical fumes are broken down at a molecular level — not just masked.' },
+      { title: 'Proven Space Technology', detail: 'ActivePure is in the Space Technology Hall of Fame. It\'s the same technology used on the International Space Station.' },
+    ],
+    whyItMatters: 'Traditional filters only clean air as it passes through your system. An Air Scrubber proactively cleans the air and surfaces throughout your entire home — providing a level of protection that filters alone simply can\'t match.',
+    icon: Sparkles,
+  },
+  'Hard Start Kit': {
+    headline: 'Give Your Compressor a Longer Life',
+    tagline: 'Reduces startup stress by up to 75%',
+    description: 'A hard start kit adds a start capacitor and relay to your compressor, giving it a powerful boost during the most stressful moment of its cycle — startup. This reduces electrical draw, heat buildup, and mechanical wear every single time your AC kicks on.',
+    keyBenefits: [
+      { title: 'Reduces Compressor Wear', detail: 'Startup is when 90% of compressor damage occurs. A hard start kit gets it running in milliseconds instead of struggling.' },
+      { title: 'Lower Startup Amps', detail: 'Cuts inrush current significantly, reducing stress on your electrical system and preventing breaker trips.' },
+      { title: 'Extends Compressor Life', detail: 'Compressors cost $1,500-$3,000+ to replace. A hard start kit can add years of life for a fraction of that cost.' },
+      { title: 'Faster, Smoother Starts', detail: 'Your system reaches full cooling capacity faster, which means more consistent comfort and less energy waste.' },
+    ],
+    whyItMatters: 'Your compressor starts and stops thousands of times per cooling season. Each startup draws a massive spike of electricity and generates heat stress. A hard start kit is one of the most cost-effective ways to protect the most expensive component in your system.',
+    icon: BatteryCharging,
+  },
+  'Float Switch': {
+    headline: 'Prevent Costly Water Damage',
+    tagline: 'Automatic shutoff before overflow causes damage',
+    description: 'A float switch installs in your condensate drain pan and automatically shuts off your HVAC system if the drain line becomes clogged and water begins to back up. It\'s a simple, inexpensive device that can prevent thousands of dollars in water damage.',
+    keyBenefits: [
+      { title: 'Prevents Water Damage', detail: 'A clogged drain line can overflow and damage ceilings, walls, floors, and belongings — especially if your air handler is in an attic or closet.' },
+      { title: 'Automatic Shutoff', detail: 'Turns off your system before water overflows. You\'ll know something needs attention before damage occurs.' },
+      { title: 'Required by Code', detail: 'Many building codes require a float switch for air handlers installed above living spaces. Stay compliant and protected.' },
+      { title: 'Pennies to Operate', detail: 'No moving parts, no electricity used during normal operation. It only activates when water rises to an unsafe level.' },
+    ],
+    whyItMatters: 'Drain line clogs are one of the most common HVAC issues, especially in humid climates. Without a float switch, a $20 clog can cause $5,000+ in water damage to your home. It\'s the cheapest insurance you can add to your system.',
+    icon: Droplets,
+  },
+  'Maintenance Plan': {
+    headline: 'Keep Your System Running Like New',
+    tagline: 'Priority service, fewer breakdowns, lower bills',
+    description: 'Our maintenance plan includes two professional tune-ups per year (one for cooling, one for heating), priority scheduling when you need repairs, and a 15% discount on all parts. It\'s designed to catch small problems before they become expensive emergencies.',
+    keyBenefits: [
+      { title: '2 Tune-Ups Per Year', detail: 'Spring and fall inspections keep your system optimized for peak performance in every season.' },
+      { title: 'Priority Scheduling', detail: 'Jump to the front of the line when you need service. No more waiting days for a repair during peak season.' },
+      { title: '15% Parts Discount', detail: 'Save on every repair. The discount alone can pay for the plan if you need even one part replacement.' },
+      { title: 'Fewer Breakdowns', detail: 'Regular maintenance catches worn parts, low refrigerant, and electrical issues before they cause a system failure.' },
+    ],
+    whyItMatters: 'HVAC systems are like cars — they need regular maintenance to run efficiently and last. A well-maintained system uses less energy, breaks down less often, and lasts years longer than a neglected one. The plan pays for itself in savings.',
+    icon: CalendarCheck,
+  },
+  'Capacitor Upgrade': {
+    headline: 'Stronger Motors, Better Performance',
+    tagline: 'Turbo-rated for maximum reliability',
+    description: 'Upgrading to a turbo-rated capacitor replaces your standard capacitor with a higher-quality unit that handles heat and electrical stress better. Capacitors are one of the most common failure points in HVAC systems — a premium one prevents unexpected breakdowns.',
+    keyBenefits: [
+      { title: 'Prevents Motor Failure', detail: 'A weak or failing capacitor causes motors to overheat and burn out. A turbo-rated capacitor delivers consistent, reliable power.' },
+      { title: 'Improved Efficiency', detail: 'Motors run at optimal speed with proper capacitance, using less electricity and producing better airflow or cooling.' },
+      { title: 'Heat Resistant', detail: 'Turbo-rated capacitors withstand higher temperatures than standard ones — critical in hot outdoor units.' },
+      { title: 'Longer Lifespan', detail: 'Standard capacitors last 5-7 years. Turbo-rated units last significantly longer, reducing future service calls.' },
+    ],
+    whyItMatters: 'Capacitor failure is the #1 most common HVAC repair. When a capacitor fails on a 100°F day, your system stops working completely. Upgrading now is a small investment that prevents an emergency call later.',
+    icon: Gauge,
+  },
+  'Condensate Pump': {
+    headline: 'Reliable Drainage, Zero Worries',
+    tagline: 'Quiet, efficient condensate removal',
+    description: 'A condensate pump actively removes water produced by your HVAC system when gravity drainage isn\'t possible or reliable. It\'s essential for systems installed in basements, interior closets, or any location where the drain line can\'t flow downhill.',
+    keyBenefits: [
+      { title: 'Reliable Drainage', detail: 'Actively pumps condensate water away from your system, preventing overflow even when gravity drainage isn\'t an option.' },
+      { title: 'Quiet Operation', detail: 'Modern condensate pumps are whisper-quiet. You won\'t even know it\'s running.' },
+      { title: 'Prevents Water Damage', detail: 'Eliminates the risk of standing water, overflow, and the mold growth that comes with poor drainage.' },
+      { title: 'Built-in Safety Switch', detail: 'Automatically shuts off your HVAC system if the pump fails or the reservoir fills up — protecting your home.' },
+    ],
+    whyItMatters: 'If your air handler is in a location where water can\'t drain by gravity, a condensate pump is essential. Even if you have gravity drainage, a pump provides an extra layer of protection against clogs and backups.',
+    icon: Wrench,
+  },
+};
 
 const REFRIGERANT_TYPES = ['R-410A', 'R-22', 'R-32', 'R-134a', 'R-407C', 'R-404A', 'Other'];
 
@@ -139,6 +292,27 @@ const SYMPTOM_OPTIONS = [
   'Electrical issues',
   'Vibration',
   'Compressor failure',
+];
+
+const SECONDARY_PROBLEMS = [
+  'Weak air flow',
+  'Blocked filter',
+  'Weak capacitor',
+  'Weak compressor',
+  'Over amping compressor',
+  'Over amping condenser motor',
+  'Over amping blower motor',
+  'Burnt electrical components and wiring',
+  'Blocked drain',
+  'Pitted contactor',
+  'Loose wiring connections',
+  'Refrigerant leak',
+  'Evaporator coil leak',
+  'Condenser coil leak',
+  'Safety issues',
+  'Overcharged',
+  'Undercharged',
+  'Recommend complete HVAC system cleaning and duct camera inspection',
 ];
 
 const EMPTY_EQUIPMENT_INFO = {
@@ -210,6 +384,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
   const equipmentInfo = activeUnit.equipment_info;
   const warrantyInfo = activeUnit.warranty_info;
   const problemFound = activeUnit.problem_found;
+  const secondaryProblems = activeUnit.secondary_problems || [];
   const problemDetails = activeUnit.problem_details;
   const healthRatings = activeUnit.health_ratings;
   const healthNotes = activeUnit.health_notes;
@@ -221,6 +396,15 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
   const setEquipmentInfo = (info: typeof EMPTY_EQUIPMENT_INFO) => updateUnit(activeUnitIdx, { equipment_info: info });
   const setWarrantyInfo = (info: typeof EMPTY_WARRANTY_INFO) => updateUnit(activeUnitIdx, { warranty_info: info });
   const setProblemFound = (val: string) => updateUnit(activeUnitIdx, { problem_found: val });
+  const setSecondaryProblems = (val: string[]) => updateUnit(activeUnitIdx, { secondary_problems: val });
+  const toggleSecondaryProblem = (problem: string) => {
+    const current = secondaryProblems;
+    if (current.includes(problem)) {
+      setSecondaryProblems(current.filter(p => p !== problem));
+    } else {
+      setSecondaryProblems([...current, problem]);
+    }
+  };
   const setProblemDetails = (val: typeof EMPTY_PROBLEM_DETAILS | ((prev: typeof EMPTY_PROBLEM_DETAILS) => typeof EMPTY_PROBLEM_DETAILS)) => {
     if (typeof val === 'function') {
       setUnits(prev => prev.map((u, i) => i === activeUnitIdx ? { ...u, problem_details: val(u.problem_details) } : u));
@@ -261,6 +445,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
   const [selectedOptionIdx, setSelectedOptionIdx] = useState<number | null>(null);
   const [expandedOption, setExpandedOption] = useState<number | null>(0);
   const [upgrades, setUpgrades] = useState<UpgradeItem[]>([]);
+  const [flyerProduct, setFlyerProduct] = useState<string | null>(null);
   const [techNotes, setTechNotes] = useState('');
   const [serviceDate, setServiceDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -399,6 +584,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       unit.equipment_info = data.equipment_info || { ...EMPTY_EQUIPMENT_INFO };
       unit.warranty_info = data.warranty_info || { ...EMPTY_WARRANTY_INFO };
       unit.problem_found = data.problem_found || '';
+      unit.secondary_problems = data.secondary_problems || [];
       unit.problem_details = data.problem_details || { ...EMPTY_PROBLEM_DETAILS };
       unit.health_ratings = data.health_ratings || {};
       unit.health_notes = data.health_notes || {};
@@ -957,67 +1143,75 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-navy mb-1">Equipment Type</label>
-            <select
-              value={equipmentInfo.equipment_type}
-              onChange={(e) => setEquipmentInfo({ ...equipmentInfo, equipment_type: e.target.value })}
-              className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-            >
-              <option value="">Select type...</option>
-              {EQUIPMENT_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="relative">
-            <Input
-              label="Make"
-              value={equipmentInfo.make}
-              onChange={(e) => {
-                const val = e.target.value;
-                setBrandSearch(val);
-                setEquipmentInfo({ ...equipmentInfo, make: val });
-                setShowBrands(true);
-              }}
-              onFocus={() => { if (brandSearch.length >= 1) setShowBrands(true); }}
-              onBlur={() => { setTimeout(() => setShowBrands(false), 300); }}
-              placeholder="Start typing brand..."
-            />
-            {showBrands && brandSearch.length >= 1 && filteredBrands.length > 0 && (
-              <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                {filteredBrands.map((brand) => (
-                  <button
-                    key={brand}
-                    type="button"
-                    className="block w-full text-left px-3 py-2 text-sm text-navy/80 hover:bg-accent-light hover:text-accent"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setEquipmentInfo({ ...equipmentInfo, make: brand });
-                      setBrandSearch(brand);
-                      setShowBrands(false);
-                    }}
-                  >
-                    {brand}
-                  </button>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-navy mb-1">Equipment Type</label>
+              <select
+                value={equipmentInfo.equipment_type}
+                onChange={(e) => setEquipmentInfo({ ...equipmentInfo, equipment_type: e.target.value })}
+                className="block w-full rounded-lg border border-border px-3 py-2.5 text-sm text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              >
+                <option value="">Select type...</option>
+                {EQUIPMENT_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
                 ))}
-              </div>
-            )}
+              </select>
+            </div>
+
+            <div className="relative">
+              <Input
+                label="Make"
+                value={equipmentInfo.make}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setBrandSearch(val);
+                  setEquipmentInfo({ ...equipmentInfo, make: val });
+                  setShowBrands(true);
+                }}
+                onFocus={() => { if (brandSearch.length >= 1) setShowBrands(true); }}
+                onBlur={() => { setTimeout(() => setShowBrands(false), 300); }}
+                placeholder="Brand..."
+              />
+              {showBrands && brandSearch.length >= 1 && filteredBrands.length > 0 && (
+                <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {filteredBrands.map((brand) => (
+                    <button
+                      key={brand}
+                      type="button"
+                      className="block w-full text-left px-3 py-2 text-sm text-navy/80 hover:bg-accent-light hover:text-accent"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setEquipmentInfo({ ...equipmentInfo, make: brand });
+                        setBrandSearch(brand);
+                        setShowBrands(false);
+                      }}
+                    >
+                      {brand}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <Input label="Model" value={equipmentInfo.model} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, model: e.target.value })} />
-          <Input label="Serial Number" value={equipmentInfo.serial_number} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, serial_number: e.target.value })} />
-          <Input label="Location" placeholder="e.g. Rooftop, Attic, Garage" value={equipmentInfo.location} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, location: e.target.value })} />
-          <Input label="Age (years)" type="number" value={equipmentInfo.age} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, age: e.target.value })} />
-          <Input label="Tonnage" value={equipmentInfo.tonnage} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, tonnage: e.target.value })} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Model" value={equipmentInfo.model} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, model: e.target.value })} />
+            <Input label="Serial Number" value={equipmentInfo.serial_number} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, serial_number: e.target.value })} />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <Input label="Location" placeholder="Rooftop..." value={equipmentInfo.location} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, location: e.target.value })} />
+            <Input label="Age (yrs)" type="number" value={equipmentInfo.age} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, age: e.target.value })} />
+            <Input label="Tonnage" value={equipmentInfo.tonnage} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, tonnage: e.target.value })} />
+          </div>
+
           <div>
-            <label className="block text-sm font-medium text-navy mb-1">Refrigerant Type</label>
+            <label className="block text-xs font-medium text-navy mb-1">Refrigerant Type</label>
             <select
               value={equipmentInfo.refrigerant_type}
               onChange={(e) => setEquipmentInfo({ ...equipmentInfo, refrigerant_type: e.target.value })}
-              className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              className="block w-full rounded-lg border border-border px-3 py-2.5 text-sm text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
               <option value="">Select refrigerant...</option>
               {REFRIGERANT_TYPES.map((r) => (
@@ -1209,6 +1403,26 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
           placeholder="Describe the problem found during inspection..."
           className="block w-full rounded-lg border border-border px-3 py-2 text-black placeholder-gray-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent min-h-[200px]"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-navy mb-2">Secondary Problems</label>
+        <div className="flex flex-wrap gap-2">
+          {SECONDARY_PROBLEMS.map((problem) => (
+            <button
+              key={problem}
+              type="button"
+              onClick={() => toggleSecondaryProblem(problem)}
+              className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                secondaryProblems.includes(problem)
+                  ? 'bg-accent text-white border-accent'
+                  : 'bg-white text-navy/80 border-border hover:bg-ice'
+              }`}
+            >
+              {problem}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>
@@ -1657,26 +1871,110 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
     </div>
   );
 
+  const renderUpgradeFlyer = () => {
+    if (!flyerProduct) return null;
+    const flyer = UPGRADE_FLYERS[flyerProduct];
+    const catalogItem = UPGRADE_CATALOG.find(c => c.name === flyerProduct);
+    if (!flyer || !catalogItem) return null;
+    const IconComp = flyer.icon;
+    const isAdded = upgrades.some(u => u.name === flyerProduct);
+
+    return (
+      <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
+        <div className="absolute inset-0 bg-black/50" onClick={() => setFlyerProduct(null)} />
+        <div className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[92vh] flex flex-col shadow-2xl animate-[slideUp_0.25s_ease-out]">
+          {/* Header */}
+          <div className="relative bg-gradient-to-br from-navy to-navy/90 text-white px-6 pt-8 pb-6 rounded-t-2xl">
+            <button
+              type="button"
+              onClick={() => setFlyerProduct(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center">
+                <IconComp className="w-7 h-7" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold leading-tight">{catalogItem.name}</h2>
+                <p className="text-white/70 text-sm font-medium">{formatCurrency(catalogItem.price)}</p>
+              </div>
+            </div>
+            <p className="text-2xl font-bold leading-snug">{flyer.headline}</p>
+            <p className="text-white/80 text-sm mt-1">{flyer.tagline}</p>
+          </div>
+
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            <p className="text-sm text-navy/80 leading-relaxed">{flyer.description}</p>
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-navy uppercase tracking-wider">Key Benefits</h3>
+              {flyer.keyBenefits.map((b, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
+                    <Check className="w-4 h-4 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-navy">{b.title}</p>
+                    <p className="text-xs text-steel leading-relaxed">{b.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-accent/5 border border-accent/20 rounded-xl p-4">
+              <h3 className="text-sm font-bold text-accent mb-1.5">Why It Matters</h3>
+              <p className="text-sm text-navy/80 leading-relaxed">{flyer.whyItMatters}</p>
+            </div>
+          </div>
+
+          {/* Sticky footer */}
+          <div className="flex-shrink-0 px-6 py-4 border-t border-border bg-white rounded-b-2xl">
+            {isAdded ? (
+              <div className="flex items-center justify-center gap-2 py-3 text-green-600 font-semibold">
+                <Check className="w-5 h-5" />
+                Added to Service
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setUpgrades([...upgrades, { ...catalogItem, benefits: [...catalogItem.benefits] }]);
+                  setFlyerProduct(null);
+                }}
+                className="w-full py-3 rounded-xl bg-accent text-white font-semibold text-base active:bg-accent/90 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Add to Service — {formatCurrency(catalogItem.price)}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderUpgrades = () => (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-navy">Upgrades & Add-ons</h3>
 
       {/* Upgrade Catalog */}
       <div className="space-y-2">
-        <p className="text-sm text-steel">Tap to add recommended upgrades:</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <p className="text-sm text-steel">Recommended upgrades for this service:</p>
+        <div className="space-y-2">
           {UPGRADE_CATALOG.filter(cat => !upgrades.some(u => u.name === cat.name)).map(cat => {
             const priorityColors: Record<string, string> = {
               low: 'border-l-green-400',
               medium: 'border-l-yellow-400',
               high: 'border-l-red-400',
             };
+            const hasFlyer = !!UPGRADE_FLYERS[cat.name];
             return (
-              <button
+              <div
                 key={cat.name}
-                type="button"
-                onClick={() => setUpgrades([...upgrades, { ...cat, benefits: [...cat.benefits] }])}
-                className={`text-left p-3 rounded-lg border border-border ${priorityColors[cat.priority]} border-l-4 hover:bg-ice transition-colors`}
+                className={`p-3 rounded-lg border border-border ${priorityColors[cat.priority]} border-l-4`}
               >
                 <div className="flex justify-between items-start">
                   <span className="text-sm font-medium text-navy">{cat.name}</span>
@@ -1687,7 +1985,27 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                     <span key={b} className="text-[10px] px-1.5 py-0.5 bg-ice text-steel rounded">{b}</span>
                   ))}
                 </div>
-              </button>
+                <div className="flex gap-2 mt-2.5">
+                  {hasFlyer && (
+                    <button
+                      type="button"
+                      onClick={() => setFlyerProduct(cat.name)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-accent/30 text-accent text-xs font-semibold hover:bg-accent/5 active:bg-accent/10 transition-colors"
+                    >
+                      <Info className="w-3.5 h-3.5" />
+                      Learn More
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setUpgrades([...upgrades, { ...cat, benefits: [...cat.benefits] }])}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-accent text-white text-xs font-semibold active:bg-accent/90 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add to Service
+                  </button>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -1996,6 +2314,16 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
                     u.problem_details.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
                     'bg-green-100 text-green-700'
                   }`}>{u.problem_details.severity}</span>
+                </div>
+              )}
+              {u.secondary_problems && u.secondary_problems.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-border/30">
+                  <p className="text-xs text-steel font-medium mb-1">Secondary Problems:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {u.secondary_problems.map(p => (
+                      <span key={p} className="px-2 py-0.5 rounded-full text-xs bg-accent/10 text-accent font-medium">{p}</span>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -2346,8 +2674,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
       </div>
 
       {/* Form Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 max-w-2xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-4 py-4 max-w-2xl mx-auto w-full pb-8">
         {renderCurrentStep()}
+        {/* Extra padding so inputs aren't hidden behind keyboard + footer */}
+        <div className="h-32" />
       </div>
 
       {/* Footer Navigation */}
@@ -2387,6 +2717,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, workOrderId,
         </div>
       )}
 
+      {/* Upgrade Flyer Modal */}
+      {renderUpgradeFlyer()}
     </div>
   );
 }
