@@ -211,7 +211,7 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
           </p>
           <button
             onClick={() => router.back()}
-            className="mt-2 px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-medium"
+            className="mt-2 px-6 py-2.5 rounded-xl bg-ember text-white text-sm font-medium"
           >
             Back to Job
           </button>
@@ -228,8 +228,8 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
       </button>
 
       <div className="flex items-center gap-2">
-        <FileText className="w-5 h-5 text-blue-600" />
-        <h1 className="text-lg font-semibold text-gray-900">Create Quote</h1>
+        <FileText className="w-5 h-5 text-accent" />
+        <h1 className="text-lg font-semibold text-navy">Create Quote</h1>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm p-4 space-y-1">
@@ -242,10 +242,10 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
 
       <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900 text-sm">Materials & Parts</h3>
+          <h3 className="font-semibold text-navy text-sm">Materials & Parts</h3>
           <button
             onClick={addLineItem}
-            className="flex items-center gap-1 text-xs font-medium text-blue-600"
+            className="flex items-center gap-1 text-xs font-medium text-ember"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Item
@@ -304,10 +304,10 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
 
       <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900 text-sm">Labor</h3>
+          <h3 className="font-semibold text-navy text-sm">Labor</h3>
           <button
             onClick={addLaborItem}
-            className="flex items-center gap-1 text-xs font-medium text-blue-600"
+            className="flex items-center gap-1 text-xs font-medium text-ember"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Labor
@@ -366,7 +366,7 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
       </div>
 
       <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-        <h3 className="font-semibold text-gray-900 text-sm">Summary</h3>
+        <h3 className="font-semibold text-navy text-sm">Summary</h3>
 
         <div className="space-y-2 text-sm">
           <div className="flex justify-between text-gray-600">
@@ -387,7 +387,7 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
               <button
                 onClick={() => setTaxEnabled(!taxEnabled)}
                 className={`relative w-9 h-5 rounded-full transition ${
-                  taxEnabled ? 'bg-blue-600' : 'bg-gray-300'
+                  taxEnabled ? 'bg-accent' : 'bg-gray-300'
                 }`}
               >
                 <span
@@ -413,7 +413,7 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
             <span>${tax.toFixed(2)}</span>
           </div>
 
-          <div className="flex justify-between pt-2 border-t border-gray-100 text-base font-semibold text-gray-900">
+          <div className="flex justify-between pt-2 border-t border-gray-100 text-base font-semibold text-navy">
             <span>Total</span>
             <span>${total.toFixed(2)}</span>
           </div>
@@ -423,7 +423,7 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
       <button
         onClick={handleSendQuote}
         disabled={sending || total === 0}
-        className="w-full py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 flex items-center justify-center gap-2"
+        className="w-full py-3 rounded-xl bg-ember text-white font-semibold hover:bg-ember-dark active:bg-ember-dark disabled:opacity-50 flex items-center justify-center gap-2"
       >
         <FileText className="w-4 h-4" />
         {sending ? 'Saving...' : 'Save Quote'}

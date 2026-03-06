@@ -120,7 +120,7 @@ export default function JobQueuePage() {
 
   return (
     <div className="pt-6 space-y-4">
-      <h1 className="text-xl font-bold text-gray-900">Job Queue</h1>
+      <h1 className="text-xl font-bold text-navy">Job Queue</h1>
 
       {/* Search */}
       <div className="relative">
@@ -130,7 +130,7 @@ export default function JobQueuePage() {
           placeholder="Search jobs..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
         />
       </div>
 
@@ -142,8 +142,8 @@ export default function JobQueuePage() {
             onClick={() => setActiveFilter(f.key)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 ${
               activeFilter === f.key
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-navy text-white'
+                : 'bg-ice text-steel hover:bg-accent-light'
             }`}
           >
             {f.label}
@@ -176,7 +176,7 @@ export default function JobQueuePage() {
       {/* Available Jobs */}
       {unassigned.length > 0 && (
         <div className="space-y-3 mt-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+          <h2 className="text-sm font-semibold text-steel uppercase tracking-wide">
             Available Jobs ({unassigned.length})
           </h2>
           {unassigned.map((job) => (

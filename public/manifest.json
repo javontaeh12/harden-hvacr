@@ -1,12 +1,12 @@
 {
   "name": "Harden HVACR Service Web App",
-  "short_name": "Service App",
-  "description": "Mobile service app for Harden HVACR",
+  "short_name": "Harden HVAC",
+  "description": "Harden HVAC & Refrigeration Tech Portal",
   "start_url": "/admin/tech",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#ffffff",
-  "theme_color": "#1e40af",
+  "background_color": "#0a1f3f",
+  "theme_color": "#0a1f3f",
   "icons": [
     {
       "src": "/icon-192.png",

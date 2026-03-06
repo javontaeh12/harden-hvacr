@@ -79,10 +79,10 @@ export default function JobCard({ job, onAdvanceStatus }: JobCardProps) {
               }
             }}
             disabled={advancing}
-            className="mt-3 w-full py-2 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium hover:bg-blue-100 active:bg-blue-200 disabled:opacity-50 flex items-center justify-center gap-1.5"
+            className="mt-3 w-full py-2 rounded-lg bg-accent-light text-accent text-xs font-medium hover:bg-ice active:bg-ice disabled:opacity-50 flex items-center justify-center gap-1.5"
           >
             {advancing ? (
-              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
             ) : (
               <>&rarr; {nextLabel}</>
             )}

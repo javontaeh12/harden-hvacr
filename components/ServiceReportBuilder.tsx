@@ -775,15 +775,15 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
     return (
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900">Equipment Information</h3>
+        <h3 className="text-lg font-semibold text-navy">Equipment Information</h3>
 
         {/* Customer selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+          <label className="block text-sm font-medium text-navy mb-1">Customer</label>
           <select
             value={customerId}
             onChange={(e) => handleCustomerChange(e.target.value)}
-            className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           >
             <option value="">Select customer...</option>
             {customers.map((c) => (
@@ -795,11 +795,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
         {/* Existing equipment selector */}
         {filteredEquipment.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Existing Equipment (optional)</label>
+            <label className="block text-sm font-medium text-navy mb-1">Existing Equipment (optional)</label>
             <select
               value={equipmentId}
               onChange={(e) => handleEquipmentSelect(e.target.value)}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
               <option value="">Select or enter manually...</option>
               {filteredEquipment.map((eq) => (
@@ -813,11 +813,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Equipment Type</label>
+            <label className="block text-sm font-medium text-navy mb-1">Equipment Type</label>
             <select
               value={equipmentInfo.equipment_type}
               onChange={(e) => setEquipmentInfo({ ...equipmentInfo, equipment_type: e.target.value })}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
               <option value="">Select type...</option>
               {EQUIPMENT_TYPES.map((t) => (
@@ -842,12 +842,12 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
               placeholder="Start typing brand..."
             />
             {showBrands && brandSearch.length >= 1 && filteredBrands.length > 0 && (
-              <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <div className="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                 {filteredBrands.map((brand) => (
                   <button
                     key={brand}
                     type="button"
-                    className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+                    className="block w-full text-left px-3 py-2 text-sm text-navy/80 hover:bg-accent-light hover:text-accent"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       setEquipmentInfo({ ...equipmentInfo, make: brand });
@@ -868,11 +868,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
           <Input label="Age (years)" type="number" value={equipmentInfo.age} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, age: e.target.value })} />
           <Input label="Tonnage" value={equipmentInfo.tonnage} onChange={(e) => setEquipmentInfo({ ...equipmentInfo, tonnage: e.target.value })} />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Refrigerant Type</label>
+            <label className="block text-sm font-medium text-navy mb-1">Refrigerant Type</label>
             <select
               value={equipmentInfo.refrigerant_type}
               onChange={(e) => setEquipmentInfo({ ...equipmentInfo, refrigerant_type: e.target.value })}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
               <option value="">Select refrigerant...</option>
               {REFRIGERANT_TYPES.map((r) => (
@@ -883,7 +883,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
+          <label className="block text-sm font-medium text-navy mb-1">Condition</label>
           <div className="flex flex-wrap gap-2">
             {CONDITIONS.map((c) => (
               <button
@@ -892,8 +892,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                 onClick={() => setEquipmentInfo({ ...equipmentInfo, condition: c })}
                 className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
                   equipmentInfo.condition === c
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    ? 'bg-ember text-white border-ember'
+                    : 'bg-white text-navy/80 border-border hover:bg-ice'
                 }`}
               >
                 {c}
@@ -912,31 +912,31 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       <div className="space-y-4">
         {/* Customer & Equipment reference bar */}
         {(selectedCustomer || equipmentInfo.make) && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+          <div className="bg-accent-light border border-accent/20 rounded-lg p-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
             {selectedCustomer && (
-              <span className="text-blue-900"><span className="text-blue-500 font-medium">Customer:</span> {selectedCustomer.full_name}</span>
+              <span className="text-navy"><span className="text-accent font-medium">Customer:</span> {selectedCustomer.full_name}</span>
             )}
             {equipmentInfo.make && (
-              <span className="text-blue-900"><span className="text-blue-500 font-medium">Make:</span> {equipmentInfo.make}</span>
+              <span className="text-navy"><span className="text-accent font-medium">Make:</span> {equipmentInfo.make}</span>
             )}
             {equipmentInfo.model && (
-              <span className="text-blue-900"><span className="text-blue-500 font-medium">Model:</span> {equipmentInfo.model}</span>
+              <span className="text-navy"><span className="text-accent font-medium">Model:</span> {equipmentInfo.model}</span>
             )}
             {equipmentInfo.serial_number && (
-              <span className="text-blue-900"><span className="text-blue-500 font-medium">Serial:</span> {equipmentInfo.serial_number}</span>
+              <span className="text-navy"><span className="text-accent font-medium">Serial:</span> {equipmentInfo.serial_number}</span>
             )}
           </div>
         )}
 
-        <h3 className="text-lg font-semibold text-gray-900">Warranty Information</h3>
+        <h3 className="text-lg font-semibold text-navy">Warranty Information</h3>
 
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-gray-700">Has Warranty?</label>
+          <label className="text-sm font-medium text-navy">Has Warranty?</label>
           <button
             type="button"
             onClick={() => setWarrantyInfo({ ...warrantyInfo, has_warranty: !warrantyInfo.has_warranty })}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              warrantyInfo.has_warranty ? 'bg-blue-600' : 'bg-gray-300'
+              warrantyInfo.has_warranty ? 'bg-ember' : 'bg-gray-300'
             }`}
           >
             <span
@@ -950,11 +950,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
         {warrantyInfo.has_warranty && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Warranty Type</label>
+              <label className="block text-sm font-medium text-navy mb-1">Warranty Type</label>
               <select
                 value={warrantyInfo.warranty_type}
                 onChange={(e) => setWarrantyInfo({ ...warrantyInfo, warranty_type: e.target.value })}
-                className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               >
                 <option value="">Select type...</option>
                 <option value="manufacturer">Manufacturer</option>
@@ -982,19 +982,19 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
               onChange={(e) => setWarrantyInfo({ ...warrantyInfo, coverage: e.target.value })}
             />
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Warranty Notes</label>
+              <label className="block text-sm font-medium text-navy mb-1">Warranty Notes</label>
               <textarea
                 value={warrantyInfo.notes}
                 onChange={(e) => setWarrantyInfo({ ...warrantyInfo, notes: e.target.value })}
                 rows={3}
-                className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </div>
 
             {/* Warranty Proof Screenshot */}
             <div className="sm:col-span-2 space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Warranty Proof</label>
-              <p className="text-xs text-gray-500">Screenshot the warranty confirmation and upload it here. It will be saved to the customer&apos;s equipment profile.</p>
+              <label className="block text-sm font-medium text-navy">Warranty Proof</label>
+              <p className="text-xs text-steel">Screenshot the warranty confirmation and upload it here. It will be saved to the customer&apos;s equipment profile.</p>
               <input
                 ref={warrantyScreenshotRef}
                 type="file"
@@ -1026,7 +1026,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
               </div>
               {warrantyScreenshot && (
                 <div className="relative inline-block">
-                  <img src={URL.createObjectURL(warrantyScreenshot)} alt="Warranty proof" className="max-h-40 rounded-lg border border-gray-200" />
+                  <img src={URL.createObjectURL(warrantyScreenshot)} alt="Warranty proof" className="max-h-40 rounded-lg border border-border" />
                   <button
                     type="button"
                     onClick={() => { setWarrantyScreenshot(null); setWarrantyScreenshotUrl(null); }}
@@ -1041,9 +1041,9 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
         )}
 
         {/* Warranty Lookup Section */}
-        <div className="border-t border-gray-200 pt-4 space-y-3">
-          <label className="block text-sm font-medium text-gray-700">Warranty Lookup</label>
-          <p className="text-xs text-gray-500">Opens the warranty site in a floating window pinned to the bottom of your screen. Look up the warranty, then screenshot and upload the proof above.</p>
+        <div className="border-t border-border pt-4 space-y-3">
+          <label className="block text-sm font-medium text-navy">Warranty Lookup</label>
+          <p className="text-xs text-steel">Opens the warranty site in a floating window pinned to the bottom of your screen. Look up the warranty, then screenshot and upload the proof above.</p>
           <div className="flex flex-wrap gap-2">
             {WARRANTY_LINKS.map(link => {
               const isOpen = warrantyPopupBrand === link.brand;
@@ -1102,7 +1102,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
                     isOpen
                       ? 'border-green-600 bg-green-600 text-white'
-                      : 'border-gray-200 bg-white text-blue-600 hover:bg-blue-50'
+                      : 'border-border bg-white text-accent hover:bg-accent-light'
                   }`}
                 >
                   {link.brand}
@@ -1157,21 +1157,21 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
   const renderStep3 = () => (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">Problem Found</h3>
+      <h3 className="text-lg font-semibold text-navy">Problem Found</h3>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <label className="block text-sm font-medium text-navy mb-1">Description</label>
         <textarea
           value={problemFound}
           onChange={(e) => setProblemFound(e.target.value)}
           rows={8}
           placeholder="Describe the problem found during inspection..."
-          className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[200px]"
+          className="block w-full rounded-lg border border-border px-3 py-2 text-black placeholder-gray-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent min-h-[200px]"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Severity Level</label>
+        <label className="block text-sm font-medium text-navy mb-2">Severity Level</label>
         <div className="flex flex-wrap gap-2">
           {(['low', 'medium', 'high', 'critical'] as const).map((sev) => {
             const colors: Record<string, string> = {
@@ -1203,7 +1203,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Symptoms</label>
+        <label className="block text-sm font-medium text-navy mb-2">Symptoms</label>
         <div className="flex flex-wrap gap-2">
           {SYMPTOM_OPTIONS.map((symptom) => (
             <button
@@ -1212,8 +1212,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
               onClick={() => toggleSymptom(symptom)}
               className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                 problemDetails.symptoms.includes(symptom)
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  ? 'bg-ember text-white border-ember'
+                  : 'bg-white text-navy/80 border-border hover:bg-ice'
               }`}
             >
               {symptom}
@@ -1223,13 +1223,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Areas Affected</label>
+        <label className="block text-sm font-medium text-navy mb-2">Areas Affected</label>
         {problemDetails.areas_affected.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2">
             {problemDetails.areas_affected.map(area => (
-              <span key={area} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-600 text-white">
+              <span key={area} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-ember text-white">
                 {area}
-                <button type="button" onClick={() => setProblemDetails({ ...problemDetails, areas_affected: problemDetails.areas_affected.filter(a => a !== area) })} className="hover:bg-blue-700 rounded-full p-0.5">
+                <button type="button" onClick={() => setProblemDetails({ ...problemDetails, areas_affected: problemDetails.areas_affected.filter(a => a !== area) })} className="hover:bg-ember-dark rounded-full p-0.5">
                   <X className="w-3 h-3" />
                 </button>
               </span>
@@ -1244,7 +1244,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                 key={area}
                 type="button"
                 onClick={() => setProblemDetails({ ...problemDetails, areas_affected: [...problemDetails.areas_affected, area] })}
-                className="px-2.5 py-1 rounded-full text-xs border bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                className="px-2.5 py-1 rounded-full text-xs border bg-white text-steel border-border hover:bg-ice"
               >
                 {area}
               </button>
@@ -1267,8 +1267,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
     return (
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900">System Health</h3>
-        <p className="text-sm text-gray-500">Rate each component of the {eqType || 'system'}</p>
+        <h3 className="text-lg font-semibold text-navy">System Health</h3>
+        <p className="text-sm text-steel">Rate each component of the {eqType || 'system'}</p>
 
         <input
           ref={healthMediaInputRef}
@@ -1292,10 +1292,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
           const extras = healthExtras[comp.key] || {};
 
           return (
-            <div key={comp.key} className="border border-gray-100 rounded-lg p-3 space-y-2">
+            <div key={comp.key} className="border border-border/50 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">{comp.label}</span>
-                <span className="text-xs text-gray-400">
+                <span className="text-sm font-medium text-navy">{comp.label}</span>
+                <span className="text-xs text-steel/60">
                   {isRefrigerantCharge(comp.key)
                     ? (extras.charge_status as string || 'Not rated')
                     : healthRatings[comp.key]
@@ -1315,7 +1315,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                       className={`flex-1 py-2 rounded text-xs font-medium transition-colors ${
                         healthRatings[comp.key] === rating.value
                           ? `${rating.color} text-white`
-                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          : 'bg-ice text-steel hover:bg-ice/80'
                       }`}
                     >
                       {rating.value}
@@ -1335,7 +1335,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                       className={`flex-1 py-2 rounded text-xs font-medium transition-colors ${
                         extras.charge_status === status
                           ? status === 'Correct Charge' ? 'bg-green-500 text-white' : status === 'Undercharged' ? 'bg-yellow-500 text-white' : 'bg-red-500 text-white'
-                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          : 'bg-ice text-steel hover:bg-ice/80'
                       }`}
                     >
                       {status}
@@ -1347,14 +1347,14 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
               {/* Amp Rating for compressors/motors */}
               {isMotorType(comp.key) && (
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-gray-500 whitespace-nowrap">Amp Reading:</label>
+                  <label className="text-xs text-steel whitespace-nowrap">Amp Reading:</label>
                   <input
                     type="number"
                     step="0.1"
                     placeholder="Amps"
                     value={(extras.amp_reading as string) || ''}
                     onChange={(e) => updateHealthExtra(comp.key, 'amp_reading', e.target.value)}
-                    className="w-24 px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-black"
+                    className="w-24 px-2 py-1.5 text-xs border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-accent text-black"
                   />
                 </div>
               )}
@@ -1374,7 +1374,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                       className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                         ((extras.issues as string[]) || []).includes(issue)
                           ? 'bg-red-100 text-red-700 border-red-300'
-                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                          : 'bg-white text-steel border-border hover:bg-ice'
                       }`}
                     >
                       {issue}
@@ -1390,7 +1390,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                     type="button"
                     onClick={() => updateHealthExtra(comp.key, 'is_low', !extras.is_low)}
                     className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                      extras.is_low ? 'bg-red-100 text-red-700 border-red-300' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      extras.is_low ? 'bg-red-100 text-red-700 border-red-300' : 'bg-white text-steel border-border hover:bg-ice'
                     }`}
                   >
                     {extras.is_low ? 'Low' : 'Low'}
@@ -1398,18 +1398,18 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                   {!!extras.is_low && (
                     <div className="flex items-center gap-2">
                       <div className="flex-1">
-                        <label className="text-xs text-gray-500 block mb-0.5">Current (uF)</label>
+                        <label className="text-xs text-steel block mb-0.5">Current (uF)</label>
                         <input type="number" step="0.1" placeholder="0.0"
                           value={(extras.current_rating as string) || ''}
                           onChange={(e) => updateHealthExtra(comp.key, 'current_rating', e.target.value)}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-black" />
+                          className="w-full px-2 py-1.5 text-xs border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-accent text-black" />
                       </div>
                       <div className="flex-1">
-                        <label className="text-xs text-gray-500 block mb-0.5">MFG Rating (uF)</label>
+                        <label className="text-xs text-steel block mb-0.5">MFG Rating (uF)</label>
                         <input type="number" step="0.1" placeholder="0.0"
                           value={(extras.safe_rating as string) || ''}
                           onChange={(e) => updateHealthExtra(comp.key, 'safe_rating', e.target.value)}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-black" />
+                          className="w-full px-2 py-1.5 text-xs border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-accent text-black" />
                       </div>
                     </div>
                   )}
@@ -1422,7 +1422,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                   type="button"
                   onClick={() => updateHealthExtra(comp.key, 'needs_replacement', !extras.needs_replacement)}
                   className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    extras.needs_replacement ? 'bg-red-100 text-red-700 border-red-300' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    extras.needs_replacement ? 'bg-red-100 text-red-700 border-red-300' : 'bg-white text-steel border-border hover:bg-ice'
                   }`}
                 >
                   {extras.needs_replacement ? 'Needs Replacement' : 'Needs Replacement'}
@@ -1444,7 +1444,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                       className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                         ((extras.issues as string[]) || []).includes(issue)
                           ? 'bg-red-100 text-red-700 border-red-300'
-                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                          : 'bg-white text-steel border-border hover:bg-ice'
                       }`}
                     >
                       {issue}
@@ -1458,7 +1458,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                 placeholder="Notes (optional)..."
                 value={healthNotes[comp.key] || ''}
                 onChange={(e) => setHealthNotes(prev => ({ ...prev, [comp.key]: e.target.value }))}
-                className="w-full px-2.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-black placeholder-gray-400"
+                className="w-full px-2.5 py-1.5 text-xs border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-accent text-black placeholder-gray-400"
               />
 
               {/* Photo/Video upload for this component */}
@@ -1469,12 +1469,12 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                     setActiveHealthMediaKey(comp.key);
                     healthMediaInputRef.current?.click();
                   }}
-                  className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded"
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-accent hover:bg-accent-light rounded"
                 >
                   <Camera className="w-3 h-3" /> Add Photo/Video
                 </button>
                 {(healthMedia[comp.key] || []).length > 0 && (
-                  <span className="text-xs text-gray-400">{healthMedia[comp.key].length} file(s)</span>
+                  <span className="text-xs text-steel/60">{healthMedia[comp.key].length} file(s)</span>
                 )}
               </div>
               {(healthMedia[comp.key] || []).length > 0 && (
@@ -1484,7 +1484,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                       {hm.type === 'photo' ? (
                         <img src={URL.createObjectURL(hm.file)} alt="" className="w-16 h-16 object-cover rounded" />
                       ) : (
-                        <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">Video</div>
+                        <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-xs text-steel">Video</div>
                       )}
                       <button
                         type="button"
@@ -1509,7 +1509,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
   const renderStep5 = () => (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">Other Uploads</h3>
+      <h3 className="text-lg font-semibold text-navy">Other Uploads</h3>
 
       <div className="flex flex-wrap gap-3">
         <Button variant="outline" onClick={() => cameraInputRef.current?.click()}>
@@ -1546,16 +1546,16 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       {/* Pending uploads */}
       {pendingFiles.length > 0 && (
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-700">Ready to Upload ({pendingFiles.length})</h4>
+          <h4 className="text-sm font-medium text-navy">Ready to Upload ({pendingFiles.length})</h4>
           {pendingFiles.map((pf, idx) => (
-            <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+            <div key={idx} className="flex items-center gap-3 p-3 bg-ice rounded-lg">
               {pf.type === 'photo' ? (
                 <img src={URL.createObjectURL(pf.file)} alt="" className="w-16 h-16 object-cover rounded" />
               ) : (
-                <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">Video</div>
+                <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-xs text-steel">Video</div>
               )}
               <div className="flex-1">
-                <p className="text-sm text-gray-700 truncate">{pf.file.name}</p>
+                <p className="text-sm text-navy/80 truncate">{pf.file.name}</p>
                 <Input
                   placeholder="Add caption..."
                   value={pf.caption}
@@ -1585,7 +1585,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       {/* Uploaded media */}
       {media.length > 0 && (
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-700">Uploaded ({media.length})</h4>
+          <h4 className="text-sm font-medium text-navy">Uploaded ({media.length})</h4>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {media.map((m) => (
               <div key={m.id} className="relative group">
@@ -1602,7 +1602,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                   <X className="w-3 h-3" />
                 </button>
                 {m.caption && (
-                  <p className="text-xs text-gray-600 mt-1 truncate">{m.caption}</p>
+                  <p className="text-xs text-steel mt-1 truncate">{m.caption}</p>
                 )}
               </div>
             ))}
@@ -1611,7 +1611,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       )}
 
       {media.length === 0 && pendingFiles.length === 0 && (
-        <p className="text-sm text-gray-500 text-center py-8">No photos or videos yet. Use the buttons above to capture or upload.</p>
+        <p className="text-sm text-steel text-center py-8">No photos or videos yet. Use the buttons above to capture or upload.</p>
       )}
     </div>
   );
@@ -1619,14 +1619,14 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   const renderStep6 = () => (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Upgrades & Add-ons</h3>
+        <h3 className="text-lg font-semibold text-navy">Upgrades & Add-ons</h3>
         <Button size="sm" variant="outline" onClick={addUpgrade}>
           <Plus className="w-4 h-4 mr-1" /> Add Upgrade
         </Button>
       </div>
 
       {upgrades.length === 0 && (
-        <p className="text-sm text-gray-500 text-center py-8">No upgrades added. Click &ldquo;Add Upgrade&rdquo; to suggest accessories or add-ons.</p>
+        <p className="text-sm text-steel text-center py-8">No upgrades added. Click &ldquo;Add Upgrade&rdquo; to suggest accessories or add-ons.</p>
       )}
 
       {upgrades.map((upg, idx) => (
@@ -1651,11 +1651,11 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                 onChange={(e) => updateUpgrade(idx, { price: Number(e.target.value) })}
               />
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <label className="block text-sm font-medium text-navy mb-1">Priority</label>
                 <select
                   value={upg.priority}
                   onChange={(e) => updateUpgrade(idx, { priority: e.target.value as 'low' | 'medium' | 'high' })}
-                  className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="block w-full rounded-lg border border-border px-3 py-2 text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -1664,7 +1664,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Benefits</label>
+              <label className="text-sm font-medium text-navy">Benefits</label>
               {upg.benefits.map((b, bIdx) => (
                 <div key={bIdx} className="flex gap-2">
                   <Input
@@ -1700,7 +1700,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   const renderStep7 = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Quote Options</h3>
+        <h3 className="text-lg font-semibold text-navy">Quote Options</h3>
         <Button size="sm" variant="outline" onClick={addQuoteOption}>
           <Plus className="w-4 h-4 mr-1" /> Add Option
         </Button>
@@ -1715,21 +1715,21 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
               <button
                 type="button"
                 onClick={() => setExpandedOption(isExpanded ? null : optIdx)}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-ice transition-colors"
               >
                 <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                  selectedOptionIdx === optIdx ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                  selectedOptionIdx === optIdx ? 'bg-green-100 text-green-700' : 'bg-accent-light text-accent'
                 }`}>
                   {opt.label}
                 </span>
                 <div className="flex-1 text-left min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900 truncate">{opt.name || 'Unnamed Option'}</span>
+                    <span className="text-sm font-medium text-navy truncate">{opt.name || 'Unnamed Option'}</span>
                     {opt.is_recommended && (
                       <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded flex-shrink-0">Recommended</span>
                     )}
                   </div>
-                  <span className="text-sm text-gray-500">{formatCurrency(opt.subtotal)}</span>
+                  <span className="text-sm text-steel">{formatCurrency(opt.subtotal)}</span>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {quoteOptions.length > 1 && (
@@ -1741,13 +1741,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
-                  {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                  {isExpanded ? <ChevronUp className="w-4 h-4 text-steel/60" /> : <ChevronDown className="w-4 h-4 text-steel/60" />}
                 </div>
               </button>
 
               {/* Option body */}
               {isExpanded && (
-                <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
+                <div className="px-4 pb-4 space-y-4 border-t border-border/50">
                   <div className="pt-3 flex flex-wrap items-center gap-3">
                     <div className="flex-1 min-w-[200px]">
                       <Input
@@ -1770,7 +1770,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                       className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
                         opt.is_recommended
                           ? 'bg-green-100 text-green-700 border-green-300'
-                          : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'
+                          : 'bg-white text-steel border-border hover:bg-ice'
                       }`}
                     >
                       {opt.is_recommended ? '✓ Recommended' : 'Set Recommended'}
@@ -1779,7 +1779,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
                   {/* Items */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Items</label>
+                    <label className="text-sm font-medium text-navy">Items</label>
                     {opt.items.map((item, itemIdx) => (
                       <div key={itemIdx} className="flex flex-wrap gap-2 items-end">
                         <div className="flex-1 min-w-[150px]">
@@ -1793,7 +1793,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                           <select
                             value={item.category}
                             onChange={(e) => updateQuoteItem(optIdx, itemIdx, 'category', e.target.value)}
-                            className="block w-full rounded-lg border border-gray-300 px-2 py-2 text-sm text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="block w-full rounded-lg border border-border px-2 py-2 text-sm text-black focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                           >
                             {QUOTE_ITEM_CATEGORIES.map(cat => (
                               <option key={cat.key} value={cat.key}>{cat.label}</option>
@@ -1816,7 +1816,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                             onChange={(e) => updateQuoteItem(optIdx, itemIdx, 'unit_price', Number(e.target.value))}
                           />
                         </div>
-                        <span className="text-sm font-medium text-gray-700 w-20 text-right py-2">
+                        <span className="text-sm font-medium text-navy w-20 text-right py-2">
                           {formatCurrency(item.total)}
                         </span>
                         {opt.items.length > 1 && (
@@ -1831,7 +1831,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                     </Button>
                   </div>
 
-                  <div className="flex justify-end text-lg font-bold text-gray-900 pt-2 border-t border-gray-100">
+                  <div className="flex justify-end text-lg font-bold text-navy pt-2 border-t border-border/50">
                     Subtotal: {formatCurrency(opt.subtotal)}
                   </div>
                 </div>
@@ -1842,8 +1842,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       })}
 
       {/* Customer Selection */}
-      <div className="border-t border-gray-200 pt-4">
-        <h4 className="text-sm font-medium text-gray-700 mb-3">Which option does the customer want?</h4>
+      <div className="border-t border-border pt-4">
+        <h4 className="text-sm font-medium text-navy mb-3">Which option does the customer want?</h4>
         <div className="space-y-2">
           {quoteOptions.map((opt, idx) => (
             <button
@@ -1853,21 +1853,21 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
               className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${
                 selectedOptionIdx === idx
                   ? 'border-green-500 bg-green-50'
-                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                  : 'border-border hover:border-border bg-white'
               }`}
             >
               <div className="flex items-center gap-3">
                 <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-                  selectedOptionIdx === idx ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'
+                  selectedOptionIdx === idx ? 'bg-green-500 text-white' : 'bg-ice text-steel'
                 }`}>
                   {selectedOptionIdx === idx ? <Check className="w-4 h-4" /> : opt.label}
                 </span>
-                <span className="text-sm font-medium text-gray-900">{opt.name || 'Unnamed Option'}</span>
+                <span className="text-sm font-medium text-navy">{opt.name || 'Unnamed Option'}</span>
                 {opt.is_recommended && (
                   <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">Recommended</span>
                 )}
               </div>
-              <span className="text-sm font-bold text-gray-900">{formatCurrency(opt.subtotal)}</span>
+              <span className="text-sm font-bold text-navy">{formatCurrency(opt.subtotal)}</span>
             </button>
           ))}
         </div>
@@ -1881,23 +1881,23 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900">Review & Submit</h3>
+        <h3 className="text-lg font-semibold text-navy">Review & Submit</h3>
 
         {/* Equipment Summary */}
         <Card>
           <CardContent>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-gray-900">Equipment</h4>
-              <button type="button" onClick={() => navigateToStep(1)} className="text-sm text-blue-600 hover:underline">Edit</button>
+              <h4 className="font-medium text-navy">Equipment</h4>
+              <button type="button" onClick={() => navigateToStep(1)} className="text-sm text-accent hover:underline">Edit</button>
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              {selectedCustomer && <p className="col-span-2 text-gray-700"><span className="text-gray-500">Customer:</span> {selectedCustomer.full_name}</p>}
-              {equipmentInfo.equipment_type && <p className="text-gray-700"><span className="text-gray-500">Type:</span> {equipmentInfo.equipment_type}</p>}
-              {equipmentInfo.make && <p className="text-gray-700"><span className="text-gray-500">Make:</span> {equipmentInfo.make}</p>}
-              {equipmentInfo.model && <p className="text-gray-700"><span className="text-gray-500">Model:</span> {equipmentInfo.model}</p>}
-              {equipmentInfo.serial_number && <p className="text-gray-700"><span className="text-gray-500">Serial:</span> {equipmentInfo.serial_number}</p>}
-              {equipmentInfo.condition && <p className="text-gray-700"><span className="text-gray-500">Condition:</span> {equipmentInfo.condition}</p>}
-              {equipmentInfo.tonnage && <p className="text-gray-700"><span className="text-gray-500">Tonnage:</span> {equipmentInfo.tonnage}</p>}
+              {selectedCustomer && <p className="col-span-2 text-navy/80"><span className="text-steel">Customer:</span> {selectedCustomer.full_name}</p>}
+              {equipmentInfo.equipment_type && <p className="text-navy/80"><span className="text-steel">Type:</span> {equipmentInfo.equipment_type}</p>}
+              {equipmentInfo.make && <p className="text-navy/80"><span className="text-steel">Make:</span> {equipmentInfo.make}</p>}
+              {equipmentInfo.model && <p className="text-navy/80"><span className="text-steel">Model:</span> {equipmentInfo.model}</p>}
+              {equipmentInfo.serial_number && <p className="text-navy/80"><span className="text-steel">Serial:</span> {equipmentInfo.serial_number}</p>}
+              {equipmentInfo.condition && <p className="text-navy/80"><span className="text-steel">Condition:</span> {equipmentInfo.condition}</p>}
+              {equipmentInfo.tonnage && <p className="text-navy/80"><span className="text-steel">Tonnage:</span> {equipmentInfo.tonnage}</p>}
             </div>
           </CardContent>
         </Card>
@@ -1906,10 +1906,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
         <Card>
           <CardContent>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-gray-900">Warranty</h4>
-              <button type="button" onClick={() => navigateToStep(2)} className="text-sm text-blue-600 hover:underline">Edit</button>
+              <h4 className="font-medium text-navy">Warranty</h4>
+              <button type="button" onClick={() => navigateToStep(2)} className="text-sm text-accent hover:underline">Edit</button>
             </div>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-navy/80">
               {warrantyInfo.has_warranty
                 ? `${warrantyInfo.warranty_type || 'Yes'} - ${warrantyInfo.provider || 'Unknown provider'}${warrantyInfo.expiration ? ` (Exp: ${warrantyInfo.expiration})` : ''}`
                 : 'No warranty'}
@@ -1921,10 +1921,10 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
         <Card>
           <CardContent>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-gray-900">Problem Found</h4>
-              <button type="button" onClick={() => navigateToStep(3)} className="text-sm text-blue-600 hover:underline">Edit</button>
+              <h4 className="font-medium text-navy">Problem Found</h4>
+              <button type="button" onClick={() => navigateToStep(3)} className="text-sm text-accent hover:underline">Edit</button>
             </div>
-            <p className="text-sm text-gray-700">{problemFound || 'No description'}</p>
+            <p className="text-sm text-navy/80">{problemFound || 'No description'}</p>
             <div className="flex flex-wrap gap-1 mt-2">
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
                 problemDetails.severity === 'critical' ? 'bg-red-100 text-red-700' :
@@ -1935,7 +1935,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                 {problemDetails.severity}
               </span>
               {problemDetails.symptoms.map((s) => (
-                <span key={s} className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700">{s}</span>
+                <span key={s} className="px-2 py-0.5 rounded-full text-xs bg-ice text-navy/80">{s}</span>
               ))}
             </div>
           </CardContent>
@@ -1945,8 +1945,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
         <Card>
           <CardContent>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-gray-900">System Health</h4>
-              <button type="button" onClick={() => navigateToStep(4)} className="text-sm text-blue-600 hover:underline">Edit</button>
+              <h4 className="font-medium text-navy">System Health</h4>
+              <button type="button" onClick={() => navigateToStep(4)} className="text-sm text-accent hover:underline">Edit</button>
             </div>
             {Object.keys(healthRatings).length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -1957,14 +1957,14 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                   const comp = comps.find(c => c.key === key);
                   return (
                     <div key={key} className="text-sm">
-                      <span className="text-gray-500">{comp?.label || key}:</span>{' '}
+                      <span className="text-steel">{comp?.label || key}:</span>{' '}
                       <span className="font-medium">{rating?.label || val}</span>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No ratings recorded</p>
+              <p className="text-sm text-steel">No ratings recorded</p>
             )}
           </CardContent>
         </Card>
@@ -1974,8 +1974,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
           <Card>
             <CardContent>
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-gray-900">Uploads ({media.length})</h4>
-                <button type="button" onClick={() => navigateToStep(5)} className="text-sm text-blue-600 hover:underline">Edit</button>
+                <h4 className="font-medium text-navy">Uploads ({media.length})</h4>
+                <button type="button" onClick={() => navigateToStep(5)} className="text-sm text-accent hover:underline">Edit</button>
               </div>
               <div className="flex gap-2 overflow-x-auto">
                 {media.slice(0, 6).map((m) => (
@@ -1983,12 +1983,12 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                     {m.type === 'photo' ? (
                       <img src={m.url} alt={m.caption || ''} className="w-20 h-20 object-cover rounded" />
                     ) : (
-                      <div className="w-20 h-20 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">Video</div>
+                      <div className="w-20 h-20 bg-gray-200 rounded flex items-center justify-center text-xs text-steel">Video</div>
                     )}
                   </div>
                 ))}
                 {media.length > 6 && (
-                  <div className="w-20 h-20 bg-gray-100 rounded flex items-center justify-center text-sm text-gray-500">
+                  <div className="w-20 h-20 bg-ice rounded flex items-center justify-center text-sm text-steel">
                     +{media.length - 6}
                   </div>
                 )}
@@ -2002,14 +2002,14 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
           <Card>
             <CardContent>
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-gray-900">Upgrades ({upgrades.length})</h4>
-                <button type="button" onClick={() => navigateToStep(6)} className="text-sm text-blue-600 hover:underline">Edit</button>
+                <h4 className="font-medium text-navy">Upgrades ({upgrades.length})</h4>
+                <button type="button" onClick={() => navigateToStep(6)} className="text-sm text-accent hover:underline">Edit</button>
               </div>
               <div className="space-y-1">
                 {upgrades.map((u, i) => (
                   <div key={i} className="flex justify-between text-sm">
-                    <span className="text-gray-700">{u.name || 'Unnamed'}</span>
-                    <span className="font-medium text-gray-900">{formatCurrency(u.price)}</span>
+                    <span className="text-navy/80">{u.name || 'Unnamed'}</span>
+                    <span className="font-medium text-navy">{formatCurrency(u.price)}</span>
                   </div>
                 ))}
               </div>
@@ -2026,27 +2026,27 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                   <span className="w-7 h-7 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-xs">
                     {selectedOpt.label}
                   </span>
-                  <h4 className="font-medium text-gray-900">Selected: {selectedOpt.name || 'Unnamed Option'}</h4>
+                  <h4 className="font-medium text-navy">Selected: {selectedOpt.name || 'Unnamed Option'}</h4>
                 </div>
-                <button type="button" onClick={() => navigateToStep(7)} className="text-sm text-blue-600 hover:underline">Edit</button>
+                <button type="button" onClick={() => navigateToStep(7)} className="text-sm text-accent hover:underline">Edit</button>
               </div>
               <div className="space-y-1.5">
                 {selectedOpt.items.map((item, i) => (
                   <div key={i} className="flex justify-between text-sm">
                     <div className="flex-1">
-                      <span className="text-gray-700">{item.description || 'No description'}</span>
-                      <span className="text-gray-400 ml-2 text-xs">
+                      <span className="text-navy/80">{item.description || 'No description'}</span>
+                      <span className="text-steel/60 ml-2 text-xs">
                         {QUOTE_ITEM_CATEGORIES.find(c => c.key === item.category)?.label || item.category}
                       </span>
                     </div>
                     <div className="text-right flex-shrink-0 ml-4">
-                      <span className="text-gray-500 text-xs">{item.quantity} x {formatCurrency(item.unit_price)}</span>
-                      <span className="font-medium text-gray-900 ml-2">{formatCurrency(item.total)}</span>
+                      <span className="text-steel text-xs">{item.quantity} x {formatCurrency(item.unit_price)}</span>
+                      <span className="font-medium text-navy ml-2">{formatCurrency(item.total)}</span>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="flex justify-end text-lg font-bold text-gray-900 pt-2 mt-2 border-t border-gray-100">
+              <div className="flex justify-end text-lg font-bold text-navy pt-2 mt-2 border-t border-border/50">
                 Total: {formatCurrency(selectedOpt.subtotal)}
               </div>
             </CardContent>
@@ -2055,13 +2055,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
         {/* Tech Notes */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tech Notes (internal)</label>
+          <label className="block text-sm font-medium text-navy mb-1">Tech Notes (internal)</label>
           <textarea
             value={techNotes}
             onChange={(e) => setTechNotes(e.target.value)}
             rows={3}
             placeholder="Internal notes for your team..."
-            className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="block w-full rounded-lg border border-border px-3 py-2 text-black placeholder-gray-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
 
@@ -2074,9 +2074,9 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
         {/* Signature */}
         <div className="space-y-3">
-          <h4 className="font-medium text-gray-900">Customer Signature</h4>
-          <p className="text-xs text-gray-500">By signing below, the customer accepts the selected quote option.</p>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[120px] flex items-center justify-center">
+          <h4 className="font-medium text-navy">Customer Signature</h4>
+          <p className="text-xs text-steel">By signing below, the customer accepts the selected quote option.</p>
+          <div className="border-2 border-dashed border-border rounded-lg p-4 min-h-[120px] flex items-center justify-center">
             {signatureDataUrl ? (
               <div className="relative w-full">
                 <img src={signatureDataUrl} alt="Signature" className="w-full h-auto" />
@@ -2090,12 +2090,12 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
               </div>
             ) : (
               <div className="text-center w-full">
-                <p className="text-sm text-gray-400 mb-2">Draw signature below</p>
+                <p className="text-sm text-steel/60 mb-2">Draw signature below</p>
                 <canvas
                   ref={sigCanvasRef}
                   width={300}
                   height={120}
-                  className="border border-gray-200 rounded bg-white touch-none mx-auto"
+                  className="border border-border rounded bg-white touch-none mx-auto"
                   style={{ maxWidth: '100%' }}
                   onPointerDown={startSign}
                   onPointerMove={drawSign}
@@ -2136,8 +2136,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
             <Check className="w-8 h-8 text-green-600" />
           </div>
-          <h3 className="text-xl font-semibold text-gray-900">Payment Complete</h3>
-          <p className="text-gray-500">
+          <h3 className="text-xl font-semibold text-navy">Payment Complete</h3>
+          <p className="text-steel">
             {formatCurrency(totalAmount)} received via {paymentMethod === 'card' ? 'credit card' : paymentMethod}
           </p>
           <div className="flex justify-center gap-3 pt-4">
@@ -2159,20 +2159,20 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
     return (
       <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900">Payment</h3>
+        <h3 className="text-lg font-semibold text-navy">Payment</h3>
 
         {/* Total */}
-        <div className="text-center py-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-500">Amount Due</p>
-          <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalAmount)}</p>
+        <div className="text-center py-4 bg-ice rounded-lg">
+          <p className="text-sm text-steel">Amount Due</p>
+          <p className="text-3xl font-bold text-navy">{formatCurrency(totalAmount)}</p>
           {selectedOpt && (
-            <p className="text-sm text-gray-500 mt-1">Option {selectedOpt.label}: {selectedOpt.name || 'Unnamed'}</p>
+            <p className="text-sm text-steel mt-1">Option {selectedOpt.label}: {selectedOpt.name || 'Unnamed'}</p>
           )}
         </div>
 
         {/* Payment Method Selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
+          <label className="block text-sm font-medium text-navy mb-2">Payment Method</label>
           <div className="grid grid-cols-4 gap-2">
             {paymentMethods.map(({ key, label, icon: Icon }) => (
               <button
@@ -2181,8 +2181,8 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                 onClick={() => setPaymentMethod(key)}
                 className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-colors ${
                   paymentMethod === key
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    ? 'border-accent bg-accent-light text-accent'
+                    : 'border-border text-steel hover:border-border'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -2195,13 +2195,13 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
         {/* Payment Form */}
         {paymentMethod === 'card' && (
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">Card Details</label>
+            <label className="block text-sm font-medium text-navy">Card Details</label>
             <div
               id="card-container"
-              className="min-h-[90px] border border-gray-200 rounded-lg p-3"
+              className="min-h-[90px] border border-border rounded-lg p-3"
             />
             {!squareCard && (
-              <p className="text-xs text-gray-400">Loading card form...</p>
+              <p className="text-xs text-steel/60">Loading card form...</p>
             )}
           </div>
         )}
@@ -2217,7 +2217,7 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
             />
             {Number(cashTendered) > 0 && (
               <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                <span className="text-sm text-gray-700">Change Due</span>
+                <span className="text-sm text-navy/80">Change Due</span>
                 <span className="text-lg font-bold text-green-700">{formatCurrency(cashChange)}</span>
               </div>
             )}
@@ -2235,15 +2235,15 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
 
         {paymentMethod === 'invoice' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Note</label>
+            <label className="block text-sm font-medium text-navy mb-1">Invoice Note</label>
             <textarea
               value={invoiceNote}
               onChange={(e) => setInvoiceNote(e.target.value)}
               rows={3}
               placeholder="Add any notes for the invoice..."
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-black placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="block w-full rounded-lg border border-border px-3 py-2 text-black placeholder-gray-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             />
-            <p className="text-xs text-gray-400 mt-1">An invoice will be generated and sent to the customer.</p>
+            <p className="text-xs text-steel/60 mt-1">An invoice will be generated and sent to the customer.</p>
           </div>
         )}
 
@@ -2289,22 +2289,23 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col">
+    <div className="fixed inset-0 z-50 bg-white flex flex-col pt-[env(safe-area-inset-top)]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-navy-light/20 bg-navy flex-shrink-0">
         <div className="flex items-center gap-3">
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-700">
+          <button onClick={onClose} className="p-1 text-white/70 hover:text-white">
             <X className="w-5 h-5" />
           </button>
-          <h2 className="font-semibold text-gray-900">Service Report</h2>
+          <img src="/logo-transparent.png" alt="Harden HVAC" className="h-7 w-auto" />
+          <span className="text-xs font-medium text-white/50 hidden sm:inline">Service Report</span>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => saveDraft()} isLoading={saving}>
+        <Button size="sm" variant="ghost" onClick={() => saveDraft()} isLoading={saving} className="text-white/80 hover:text-white hover:bg-white/10">
           <Save className="w-4 h-4 mr-1" /> Save
         </Button>
       </div>
 
       {/* Progress Bar */}
-      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex-shrink-0 overflow-x-auto">
+      <div className="px-4 py-3 border-b border-border bg-navy/5 flex-shrink-0 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
           {STEPS.map((s, i) => {
             const stepNum = i + 1;
@@ -2321,14 +2322,14 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
                 disabled={!canClick}
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   isActive
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-ember text-white'
                     : (isReview && !reviewAvailable) || (isPayment && !paymentAvailable)
-                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
+                    ? 'bg-gray-200 text-steel/60 cursor-not-allowed opacity-50'
                     : visitedSteps.has(stepNum) && isStepComplete(stepNum)
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
+                    ? 'bg-accent-light text-accent hover:bg-accent-light/80 cursor-pointer'
                     : visitedSteps.has(stepNum) && !isStepComplete(stepNum)
-                    ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 cursor-pointer'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer'
+                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 cursor-pointer'
+                    : 'bg-ice text-steel hover:bg-ice/80 cursor-pointer'
                 }`}
               >
                 {isCompleted ? <Check className="w-3 h-3" /> : <span>{stepNum}</span>}
@@ -2340,17 +2341,17 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
       </div>
 
       {/* Form Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 max-w-3xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-4 py-4 max-w-2xl mx-auto w-full">
         {renderCurrentStep()}
       </div>
 
       {/* Footer Navigation */}
       {step < 8 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-white flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
           <Button variant="ghost" onClick={goBack} disabled={step === 1}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <span className="text-sm text-gray-500">Step {step} of 9</span>
+          <span className="text-sm text-steel">Step {step} of 9</span>
           {step === 7 && !reviewAvailable ? (
             <div className="text-xs text-amber-600 font-medium max-w-[140px] text-right">
               {!hasMedia ? 'Upload photos first' : selectedOptionIdx === null ? 'Select a quote option' : 'Visit all tabs to continue'}
@@ -2363,20 +2364,20 @@ export function ServiceReportBuilder({ reportId, initialCustomerId, onClose, onS
         </div>
       )}
       {step === 8 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-white flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
           <Button variant="ghost" onClick={goBack}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <span className="text-sm text-gray-500">Step 8 of 9</span>
+          <span className="text-sm text-steel">Step 8 of 9</span>
           <div />
         </div>
       )}
       {step === 9 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-white flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
           <Button variant="ghost" onClick={goBack}>
             <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-          <span className="text-sm text-gray-500">Step 9 of 9</span>
+          <span className="text-sm text-steel">Step 9 of 9</span>
           <div />
         </div>
       )}

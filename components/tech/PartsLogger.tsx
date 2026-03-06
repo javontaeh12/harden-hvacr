@@ -71,22 +71,22 @@ export default function PartsLogger({ groupId, partsUsed, onPartsChange }: Parts
       {partsUsed.length > 0 && (
         <div className="space-y-2">
           {partsUsed.map((part, i) => (
-            <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+            <div key={i} className="flex items-center justify-between bg-ice rounded-lg p-3">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{part.name}</p>
-                <p className="text-xs text-gray-500">${part.cost.toFixed(2)} each</p>
+                <p className="text-sm font-medium text-navy truncate">{part.name}</p>
+                <p className="text-xs text-steel">${part.cost.toFixed(2)} each</p>
               </div>
               <div className="flex items-center gap-2 ml-2">
                 <button
                   onClick={() => updateQuantity(i, -1)}
-                  className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center"
+                  className="w-7 h-7 rounded-full bg-white border border-border flex items-center justify-center"
                 >
                   <Minus className="w-3.5 h-3.5" />
                 </button>
                 <span className="text-sm font-semibold w-6 text-center">{part.quantity}</span>
                 <button
                   onClick={() => updateQuantity(i, 1)}
-                  className="w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center"
+                  className="w-7 h-7 rounded-full bg-white border border-border flex items-center justify-center"
                 >
                   <Plus className="w-3.5 h-3.5" />
                 </button>
@@ -94,7 +94,7 @@ export default function PartsLogger({ groupId, partsUsed, onPartsChange }: Parts
             </div>
           ))}
           <div className="flex justify-between text-sm pt-1">
-            <span className="text-gray-500">Total</span>
+            <span className="text-steel">Total</span>
             <span className="font-semibold">${totalCost.toFixed(2)}</span>
           </div>
         </div>
@@ -111,7 +111,7 @@ export default function PartsLogger({ groupId, partsUsed, onPartsChange }: Parts
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
-              className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
           <div className="max-h-48 overflow-y-auto space-y-1">
@@ -119,13 +119,13 @@ export default function PartsLogger({ groupId, partsUsed, onPartsChange }: Parts
               <button
                 key={item.id}
                 onClick={() => addPart(item)}
-                className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-blue-50 text-left"
+                className="w-full flex items-center justify-between p-2.5 rounded-lg hover:bg-accent-light text-left"
               >
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{item.name}</p>
-                  <p className="text-xs text-gray-500">{item.quantity} in stock · ${item.unit_cost.toFixed(2)}</p>
+                  <p className="text-sm font-medium text-navy">{item.name}</p>
+                  <p className="text-xs text-steel">{item.quantity} in stock · ${item.unit_cost.toFixed(2)}</p>
                 </div>
-                <Plus className="w-4 h-4 text-blue-500" />
+                <Plus className="w-4 h-4 text-accent" />
               </button>
             ))}
             {filteredInventory.length === 0 && (
@@ -139,7 +139,7 @@ export default function PartsLogger({ groupId, partsUsed, onPartsChange }: Parts
       ) : (
         <button
           onClick={() => setShowSearch(true)}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-gray-300 text-sm font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-border text-sm font-medium text-steel hover:border-accent hover:text-accent"
         >
           <Package className="w-4 h-4" />
           Add Part from Inventory

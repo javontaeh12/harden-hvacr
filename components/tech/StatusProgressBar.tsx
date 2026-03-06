@@ -30,8 +30,8 @@ export default function StatusProgressBar({ currentStatus, onAdvance, loading }:
                   isCompleted
                     ? 'bg-green-500'
                     : isCurrent
-                    ? 'bg-blue-500'
-                    : 'bg-gray-200'
+                    ? 'bg-accent'
+                    : 'bg-ice'
                 }`}
               />
               <span
@@ -39,8 +39,8 @@ export default function StatusProgressBar({ currentStatus, onAdvance, loading }:
                   isCompleted
                     ? 'text-green-600'
                     : isCurrent
-                    ? 'text-blue-600'
-                    : 'text-gray-400'
+                    ? 'text-accent'
+                    : 'text-steel'
                 }`}
               >
                 {step.label}
@@ -53,7 +53,7 @@ export default function StatusProgressBar({ currentStatus, onAdvance, loading }:
         <button
           onClick={() => onAdvance(nextStep.key)}
           disabled={loading}
-          className="w-full py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-2.5 rounded-lg bg-ember text-white text-sm font-medium hover:bg-ember-dark active:bg-ember-dark/90 disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {loading ? (
             <>

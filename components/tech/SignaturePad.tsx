@@ -100,7 +100,7 @@ export default function SignaturePad({ workOrderId, signatureUrl, onSignatureSav
   if (signatureUrl) {
     return (
       <div className="space-y-2">
-        <div className="border border-gray-200 rounded-lg p-2 bg-white">
+        <div className="border border-border rounded-lg p-2 bg-white">
           <img src={signatureUrl} alt="Signature" className="w-full h-24 object-contain" />
         </div>
         <p className="text-xs text-green-600 text-center font-medium">Signature captured</p>
@@ -132,7 +132,7 @@ export default function SignaturePad({ workOrderId, signatureUrl, onSignatureSav
         <button
           onClick={clear}
           disabled={!hasDrawn}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 disabled:opacity-40"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-border text-sm text-steel disabled:opacity-40"
         >
           <Eraser className="w-4 h-4" />
           Clear
@@ -140,7 +140,7 @@ export default function SignaturePad({ workOrderId, signatureUrl, onSignatureSav
         <button
           onClick={save}
           disabled={!hasDrawn || saving}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-40"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-ember text-white text-sm font-medium disabled:opacity-40"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
           Save

@@ -249,13 +249,13 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
               onClick={() => setMethod(m.key)}
               className={`flex items-center gap-2.5 p-3 rounded-lg border-2 transition text-left ${
                 method === m.key
-                  ? 'border-blue-600 bg-blue-50'
+                  ? 'border-accent bg-accent-light'
                   : 'border-gray-200 bg-white'
               }`}
             >
-              <m.icon className={`w-4.5 h-4.5 ${method === m.key ? 'text-blue-600' : 'text-gray-400'}`} />
+              <m.icon className={`w-4.5 h-4.5 ${method === m.key ? 'text-accent' : 'text-gray-400'}`} />
               <div>
-                <p className={`text-sm font-medium ${method === m.key ? 'text-blue-600' : 'text-gray-700'}`}>
+                <p className={`text-sm font-medium ${method === m.key ? 'text-accent' : 'text-gray-700'}`}>
                   {m.label}
                 </p>
                 <p className="text-[10px] text-gray-400">{m.desc}</p>
@@ -336,7 +336,7 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
       <button
         onClick={handleCollectPayment}
         disabled={saving || !canCollect()}
-        className="w-full py-3.5 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 active:bg-green-800 disabled:opacity-50 flex items-center justify-center gap-2"
+        className="w-full py-3.5 rounded-xl bg-ember text-white font-semibold hover:bg-ember-dark active:bg-ember-dark disabled:opacity-50 flex items-center justify-center gap-2"
       >
         <DollarSign className="w-5 h-5" />
         {saving ? 'Processing...' : 'Collect Payment'}

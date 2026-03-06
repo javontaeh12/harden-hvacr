@@ -8,14 +8,14 @@ export type CardProps = HTMLAttributes<HTMLDivElement>;
 const Card = forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('bg-white rounded-xl shadow-sm border border-gray-200', className)}
+    className={cn('bg-white rounded-xl shadow-sm border border-border', className)}
     {...props}
   />
 ));
 Card.displayName = 'Card';
 
 const CardHeader = forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('px-6 py-4 border-b border-gray-200', className)} {...props} />
+  <div ref={ref} className={cn('px-6 py-4 border-b border-border', className)} {...props} />
 ));
 CardHeader.displayName = 'CardHeader';
 
@@ -34,7 +34,7 @@ CardContent.displayName = 'CardContent';
 const CardFooter = forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl', className)}
+    className={cn('px-6 py-4 border-t border-border bg-ice rounded-b-xl', className)}
     {...props}
   />
 ));

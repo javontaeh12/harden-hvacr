@@ -19,7 +19,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
     <Fragment>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+        className="fixed inset-0 bg-navy/60 z-40 transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -28,7 +28,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
         <div
           className={cn(
-            'bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col',
+            'bg-white rounded-xl shadow-xl border border-border max-w-lg w-full max-h-[90vh] flex flex-col',
             className
           )}
           role="dialog"

@@ -79,7 +79,7 @@ export default function JobCompletePage({ params }: { params: Promise<{ id: stri
     return (
       <div className="pt-12 text-center">
         <p className="text-gray-500">Job not found</p>
-        <Link href="/admin/tech" className="text-blue-600 text-sm mt-2 inline-block">
+        <Link href="/admin/tech" className="text-accent text-sm mt-2 inline-block">
           Back to Dashboard
         </Link>
       </div>
@@ -93,14 +93,14 @@ export default function JobCompletePage({ params }: { params: Promise<{ id: stri
           <div className="animate-[scale-in_0.4s_ease-out]">
             <CheckCircle2 className="w-16 h-16 text-green-500" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Thank You!</h1>
-          <p className="text-gray-500">Your service has been completed</p>
+          <h1 className="text-2xl font-bold text-navy">Thank You!</h1>
+          <p className="text-steel">Your service has been completed</p>
         </div>
 
-        <div className="bg-gray-50 rounded-xl shadow-sm p-5 text-center space-y-2">
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Confirmation Number</p>
+        <div className="bg-ice rounded-xl shadow-sm p-5 text-center space-y-2">
+          <p className="text-xs font-medium text-steel uppercase tracking-wide">Confirmation Number</p>
           <div className="flex items-center justify-center gap-2">
-            <span className="text-2xl font-bold text-gray-900 font-mono tracking-wider">
+            <span className="text-2xl font-bold text-navy font-mono tracking-wider">
               {confirmationNumber}
             </span>
             <button
@@ -215,7 +215,7 @@ export default function JobCompletePage({ params }: { params: Promise<{ id: stri
 
         <Link
           href="/admin/tech"
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 active:bg-gray-100 transition"
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-border text-navy font-medium hover:bg-ice active:bg-accent-light transition"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard

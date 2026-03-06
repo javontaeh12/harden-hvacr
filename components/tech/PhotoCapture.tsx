@@ -59,7 +59,7 @@ export default function PhotoCapture({ workOrderId, photos, onPhotosChange }: Ph
         <button
           onClick={() => cameraInputRef.current?.click()}
           disabled={uploading}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-gray-300 text-sm font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 active:bg-blue-50"
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-gray-300 text-sm font-medium text-gray-600 hover:border-accent hover:text-accent active:bg-accent-light"
         >
           <Camera className="w-5 h-5" />
           Camera
@@ -67,7 +67,7 @@ export default function PhotoCapture({ workOrderId, photos, onPhotosChange }: Ph
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-gray-300 text-sm font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 active:bg-blue-50"
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-gray-300 text-sm font-medium text-gray-600 hover:border-accent hover:text-accent active:bg-accent-light"
         >
           <ImageIcon className="w-5 h-5" />
           Gallery
@@ -78,7 +78,7 @@ export default function PhotoCapture({ workOrderId, photos, onPhotosChange }: Ph
       <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileSelect} />
 
       {uploading && (
-        <div className="flex items-center justify-center gap-2 py-3 text-sm text-blue-600">
+        <div className="flex items-center justify-center gap-2 py-3 text-sm text-accent">
           <Loader2 className="w-4 h-4 animate-spin" />
           Uploading...
         </div>

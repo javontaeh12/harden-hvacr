@@ -27,7 +27,7 @@ export default function TechBottomNav() {
   }, [pathname]);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 lg:hidden pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-navy border-t border-navy-light pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around h-14">
         {navItems.map((item) => {
           const isActive = item.exact
@@ -44,10 +44,10 @@ export default function TechBottomNav() {
               className={cn(
                 'flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors',
                 isActive
-                  ? 'text-blue-600'
+                  ? 'text-ember'
                   : isLoading
-                    ? 'text-blue-400'
-                    : 'text-gray-400 active:text-gray-600'
+                    ? 'text-ember/60'
+                    : 'text-steel active:text-gray-300'
               )}
             >
               {isLoading ? (

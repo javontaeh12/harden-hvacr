@@ -129,8 +129,8 @@ export default function TechDashboardClient({ jobs, firstName }: TechDashboardCl
     <div className="pt-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Hey, {firstName}</h1>
-        <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
+        <h1 className="text-2xl font-bold text-navy">Hey, {firstName}</h1>
+        <p className="text-sm text-steel flex items-center gap-1 mt-0.5">
           <Calendar className="w-3.5 h-3.5" />
           {today}
         </p>
@@ -139,28 +139,28 @@ export default function TechDashboardClient({ jobs, firstName }: TechDashboardCl
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <div className="flex items-center gap-2 text-gray-500 mb-1">
+          <div className="flex items-center gap-2 text-accent mb-1">
             <Wrench className="w-4 h-4" />
-            <span className="text-xs">Total Jobs</span>
+            <span className="text-xs text-steel">Total Jobs</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">{activeCount}</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <div className="flex items-center gap-2 text-orange-500 mb-1">
+          <div className="flex items-center gap-2 text-ember mb-1">
             <Play className="w-4 h-4" />
-            <span className="text-xs text-gray-500">On Site</span>
+            <span className="text-xs text-steel">On Site</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">{inProgressCount}</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-4">
           <div className="flex items-center gap-2 text-green-500 mb-1">
             <CheckCircle2 className="w-4 h-4" />
-            <span className="text-xs text-gray-500">Completed</span>
+            <span className="text-xs text-steel">Completed</span>
           </div>
           <p className="text-2xl font-bold text-gray-900">{completedCount}</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-4">
-          <div className="flex items-center gap-2 text-gray-500 mb-1">
+          <div className="flex items-center gap-2 text-steel mb-1">
             <DollarSign className="w-4 h-4" />
             <span className="text-xs">Parts Used</span>
           </div>
@@ -171,7 +171,7 @@ export default function TechDashboardClient({ jobs, firstName }: TechDashboardCl
       {/* Next Job (Today) */}
       {nextJob ? (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Next Job</h2>
+          <h2 className="text-sm font-semibold text-steel uppercase tracking-wide mb-2">Next Job</h2>
           <div className={`bg-white rounded-xl shadow-sm p-4 border-l-4 ${priorityColor[nextJob.priority] || 'border-blue-500'}`}>
             <div className="flex items-start justify-between mb-2">
               <div>
@@ -194,14 +194,14 @@ export default function TechDashboardClient({ jobs, firstName }: TechDashboardCl
                   href={`https://maps.google.com/?q=${encodeURIComponent(nextJob.customers.address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 text-center py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex-1 text-center py-2.5 rounded-lg border border-border text-sm font-medium text-navy hover:bg-ice"
                 >
                   Open in Maps
                 </a>
               )}
               <button
                 onClick={() => router.push(`/admin/tech/jobs/${nextJob.id}`)}
-                className="flex-1 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+                className="flex-1 py-2.5 rounded-lg bg-ember text-white text-sm font-medium hover:bg-ember-dark"
               >
                 Start Job
               </button>
@@ -219,7 +219,7 @@ export default function TechDashboardClient({ jobs, firstName }: TechDashboardCl
       {/* Today's Other Jobs */}
       {todayJobs.length > 1 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+          <h2 className="text-sm font-semibold text-steel uppercase tracking-wide mb-2">
             Today ({todayJobs.length})
           </h2>
           <div className="space-y-2">
@@ -233,7 +233,7 @@ export default function TechDashboardClient({ jobs, firstName }: TechDashboardCl
       {/* Upcoming Jobs */}
       {upcomingJobs.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+          <h2 className="text-sm font-semibold text-steel uppercase tracking-wide mb-2">
             Upcoming ({upcomingJobs.length})
           </h2>
           <div className="space-y-2">
@@ -249,7 +249,7 @@ export default function TechDashboardClient({ jobs, firstName }: TechDashboardCl
         <div>
           <button
             onClick={() => setShowCompleted(!showCompleted)}
-            className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2"
+            className="flex items-center gap-2 text-sm font-semibold text-steel uppercase tracking-wide mb-2"
           >
             Completed ({completedJobs.length})
             {showCompleted ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

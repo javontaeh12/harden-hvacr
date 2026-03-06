@@ -229,7 +229,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   return (
     <div className="pt-4 pb-6 space-y-4">
       {/* Back button */}
-      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-gray-600">
+      <button onClick={() => router.back()} className="flex items-center gap-1 text-sm text-steel">
         <ArrowLeft className="w-4 h-4" />
         Back
       </button>
@@ -243,7 +243,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
       {/* Customer card */}
       <div className="bg-white rounded-xl shadow-sm p-4 space-y-2">
-        <h2 className="font-semibold text-gray-900">{job.customers?.full_name || 'Unknown Customer'}</h2>
+        <h2 className="font-semibold text-navy">{job.customers?.full_name || 'Unknown Customer'}</h2>
         <p className="text-sm text-gray-500">{job.description}</p>
         <div className="flex gap-2 pt-1">
           {job.customers?.phone && (
@@ -260,7 +260,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               href={`https://maps.google.com/?q=${encodeURIComponent(job.customers.address)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-light text-accent text-xs font-medium"
             >
               <MapPin className="w-3.5 h-3.5" />
               Maps
@@ -275,7 +275,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           </Link>
           <Link
             href={`/admin/tech/jobs/${job.id}/quote`}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 text-xs font-medium"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ember/10 text-ember text-xs font-medium"
           >
             <Receipt className="w-3.5 h-3.5" />
             Quote
@@ -290,7 +290,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-md text-xs font-medium transition ${
-              activeTab === tab.key ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'
+              activeTab === tab.key ? 'bg-white shadow-sm text-navy' : 'text-steel'
             }`}
           >
             <tab.icon className="w-3.5 h-3.5" />
@@ -352,7 +352,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
       {['in_progress', 'completed'].includes(job.status) && (
         <Link
           href={`/admin/tech/jobs/${job.id}/payment`}
-          className="w-full py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 active:bg-blue-800 flex items-center justify-center gap-2"
+          className="w-full py-3 rounded-xl bg-accent text-white font-semibold hover:bg-accent-dark active:bg-accent-dark flex items-center justify-center gap-2"
         >
           <DollarSign className="w-5 h-5" />
           Collect Payment
