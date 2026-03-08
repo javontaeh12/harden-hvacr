@@ -30,6 +30,7 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [quoteError, setQuoteError] = useState('');
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { description: '', quantity: 1, unitPrice: 0 },
@@ -144,12 +145,22 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
 
   const handleSendQuote = async () => {
     if (!job) return;
+    setQuoteError('');
+
+    const filteredLineItems = lineItems.filter((i) => i.description.trim());
+    const filteredLaborItems = laborItems.filter((i) => i.description.trim());
+
+    if (filteredLineItems.length === 0 && filteredLaborItems.length === 0) {
+      setQuoteError('Please add at least one line item or labor item with a description.');
+      return;
+    }
+
     setSending(true);
     try {
       const quoteData = {
         created_at: new Date().toISOString(),
-        line_items: lineItems.filter((i) => i.description.trim()),
-        labor_items: laborItems.filter((i) => i.description.trim()),
+        line_items: filteredLineItems,
+        labor_items: filteredLaborItems,
         tax_rate: taxEnabled ? taxRate : 0,
         materials_subtotal: materialsSubtotal,
         labor_subtotal: laborSubtotal,
@@ -419,6 +430,10 @@ export default function QuotePage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
       </div>
+
+      {quoteError && (
+        <p className="text-sm text-red-600 font-medium text-center">{quoteError}</p>
+      )}
 
       <button
         onClick={handleSendQuote}

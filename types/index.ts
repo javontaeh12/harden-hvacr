@@ -176,13 +176,16 @@ export interface WorkOrder {
   priority: WorkOrderPriority;
   description: string | null;
   notes: string | null;
-  parts_used: Array<{ name: string; quantity: number; cost: number }>;
+  scheduled_date?: string | null;
+  parts_used: Array<{ name: string; quantity: number; cost: number; inventory_item_id?: string }>;
   signature_url: string | null;
   started_at: string | null;
   completed_at: string | null;
   group_id: string;
   created_at: string;
-  customers?: { full_name: string; phone: string | null; address: string | null } | null;
+  payment?: { id: string; amount: number; method: string; status: string; created_at: string } | null;
+  quote?: { id: string; line_items: Array<{ description: string; amount: number }>; total: number; status: string } | null;
+  customers?: { full_name: string; phone: string | null; address: string | null; email?: string | null } | null;
   profiles?: { full_name: string | null } | null;
 }
 
@@ -352,6 +355,7 @@ export interface ServiceUnit {
     tonnage: string;
     refrigerant_type: string;
     condition: string;
+    tag_data?: Record<string, unknown>;
   };
   warranty_info: {
     has_warranty: boolean;

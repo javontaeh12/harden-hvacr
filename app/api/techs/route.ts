@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name')
+      .select('id, full_name, van_id')
       .eq('group_id', group_id)
       .eq('status', 'approved');
 

@@ -55,14 +55,35 @@ export default function JobCompletePage({ params }: { params: Promise<{ id: stri
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSendReport = () => {
-    if (!email.trim()) return;
+  const [reportError, setReportError] = useState('');
+
+  const handleSendReport = async () => {
+    if (!email.trim() || !job) return;
     setSendingReport(true);
-    setTimeout(() => {
+    setReportError('');
+    try {
+      const res = await fetch('/api/work-orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: job.id,
+          report_sent: true,
+          report_sent_to: email.trim(),
+        }),
+      });
+      if (res.ok) {
+        setReportSent(true);
+        setTimeout(() => setReportSent(false), 4000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setReportError(data.error || 'Failed to send report');
+      }
+    } catch (err) {
+      console.error('sendReport error:', err);
+      setReportError('Network error — please try again');
+    } finally {
       setSendingReport(false);
-      setReportSent(true);
-      setTimeout(() => setReportSent(false), 4000);
-    }, 800);
+    }
   };
 
   const partsTotal = job?.parts_used?.reduce((sum, p) => sum + p.cost * p.quantity, 0) ?? 0;
@@ -210,6 +231,9 @@ export default function JobCompletePage({ params }: { params: Promise<{ id: stri
           </div>
           {reportSent && (
             <p className="text-sm text-green-600 font-medium">Report sent to {email}</p>
+          )}
+          {reportError && (
+            <p className="text-sm text-red-600 font-medium">{reportError}</p>
           )}
         </div>
 

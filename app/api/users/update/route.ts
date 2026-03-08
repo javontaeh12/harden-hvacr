@@ -2,7 +2,7 @@ import { getProfile } from '@/lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
-const DEVELOPER_EMAIL = 'javontaedharden@gmail.com';
+const DEVELOPER_EMAIL = process.env.DEVELOPER_EMAIL || 'javontaedharden@gmail.com';
 
 export async function POST(request: NextRequest) {
   try {

@@ -110,8 +110,15 @@ export default function PaymentPage({ params }: { params: Promise<{ id: string }
   const changeDue = method === 'cash' && amountTendered ? parseFloat(amountTendered) - grandTotal : 0;
 
   const canCollect = () => {
-    if (method === 'cash') return parseFloat(amountTendered) >= grandTotal;
-    if (method === 'check') return checkNumber.trim().length > 0;
+    if (laborAmount <= 0) return false;
+    if (method === 'cash') {
+      const parsed = parseFloat(amountTendered);
+      return !isNaN(parsed) && isFinite(parsed) && parsed >= grandTotal;
+    }
+    if (method === 'check') {
+      const trimmed = checkNumber.trim();
+      return trimmed.length > 0 && /^\d+$/.test(trimmed);
+    }
     return true;
   };
 

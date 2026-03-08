@@ -1,5 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  sendTechEnRoute,
+  sendJobCompleted,
+  sendServiceConfirmation,
+} from '@/lib/dispatch-emails';
 
 // Use service role client for API routes — middleware already verified auth
 function createServiceClient() {
@@ -21,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('work_orders')
-      .select('*, customers(full_name, phone, address)')
+      .select('*, scheduled_date, customers(full_name, phone, address, email)')
       .order('created_at', { ascending: false });
 
     if (id) query = query.eq('id', id);
@@ -74,7 +79,7 @@ export async function POST(request: NextRequest) {
     // Fetch with customer join
     const { data, error } = await supabase
       .from('work_orders')
-      .select('*, customers(full_name, phone, address)')
+      .select('*, scheduled_date, customers(full_name, phone, address, email)')
       .eq('id', inserted.id)
       .single();
 
@@ -125,7 +130,7 @@ export async function PUT(request: NextRequest) {
       .from('work_orders')
       .update(updates)
       .eq('id', id)
-      .select('*, customers(full_name, phone, address)')
+      .select('*, scheduled_date, customers(full_name, phone, address, email)')
       .single();
 
     if (updateError) throw updateError;
@@ -139,6 +144,58 @@ export async function PUT(request: NextRequest) {
         .eq('id', updated.assigned_tech_id)
         .single();
       profiles = techData;
+    }
+
+    // Send status-change emails (async, non-blocking)
+    if (updated.customer_id && updates.status) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('email, full_name')
+        .eq('id', updated.customer_id)
+        .single();
+
+      if (customer?.email) {
+        const techName = profiles?.full_name || 'Your Technician';
+        const customerName = customer.full_name || 'Valued Customer';
+        const serviceDesc = updated.description?.split('\n')[0] || 'HVAC Service';
+
+        Promise.allSettled([
+          // Tech claimed/assigned → send service confirmation
+          updates.assigned_tech_id && !updates.status ? sendServiceConfirmation(customer.email, {
+            customerName,
+            serviceType: serviceDesc,
+            scheduledDate: updated.scheduled_date ? new Date(updated.scheduled_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'TBD',
+            timeFrame: '8 AM - 5 PM',
+            techName,
+          }) : Promise.resolve(),
+
+          // Tech en route → notify customer
+          updates.status === 'en_route' ? sendTechEnRoute(customer.email, {
+            customerName,
+            techName,
+            estimatedArrival: '30-60 minutes',
+            serviceType: serviceDesc,
+          }) : Promise.resolve(),
+
+          // Job completed → notify customer
+          updates.status === 'completed' ? sendJobCompleted(customer.email, {
+            customerName,
+            techName,
+            serviceType: serviceDesc,
+            completedAt: new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' }),
+          }) : Promise.resolve(),
+        ]).catch(e => console.error('Status email error:', e));
+
+        // Log agent action for completed jobs (for follow-up scheduling)
+        if (updates.status === 'completed') {
+          Promise.resolve(supabase.from('agent_logs').insert({
+            agent: 'dispatch',
+            action: 'job_completed',
+            request_id: updated.id,
+            details: { customer_email: customer.email, customer_name: customerName, tech_name: techName, service_type: serviceDesc },
+          } as Record<string, unknown>)).catch((err: unknown) => console.error('Failed to log job completion:', err));
+        }
+      }
     }
 
     return NextResponse.json({ ...updated, profiles });
