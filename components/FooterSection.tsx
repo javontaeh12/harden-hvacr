@@ -122,9 +122,19 @@ export default function FooterSection() {
           <p className="text-xs text-white/30">
             &copy; {new Date().getFullYear()} Harden HVAC &amp; Refrigeration. All rights reserved.
           </p>
-          <p className="text-xs text-white/30">
-            Tallahassee &amp; Quincy, FL &amp; Surrounding Areas
-          </p>
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+            <p className="text-xs text-white/30">
+              Tallahassee &amp; Quincy, FL &amp; Surrounding Areas
+            </p>
+            <a
+              href="https://bizfloo.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-white/30 hover:text-white/60 transition-colors"
+            >
+              Built by <span className="font-semibold">Bizfloo</span>
+            </a>
+          </div>
         </div>
       </div>
     </footer>
