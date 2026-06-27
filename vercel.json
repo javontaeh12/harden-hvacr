@@ -47,5 +47,8 @@
       "path": "/api/cron/webdev-fixes",
       "schedule": "0 15 * * 1"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": false
+  }
 }

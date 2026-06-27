@@ -88,6 +88,7 @@ export default function BookingsPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [linkedBookingIds, setLinkedBookingIds] = useState<Set<string>>(new Set());
   const [creatingWO, setCreatingWO] = useState<string | null>(null);
   const [blockedDates, setBlockedDates] = useState<Set<string>>(new Set());
@@ -167,6 +168,7 @@ export default function BookingsPage() {
       if (error) throw error;
       setBookings([data, ...bookings]);
       setIsAddOpen(false);
+      setSelectedDay(null);
       setNewBooking({
         name: '',
         contact: '',
@@ -571,11 +573,19 @@ export default function BookingsPage() {
                   : '';
                 const isBlocked = day ? blockedDates.has(dateStr) : false;
 
+                const isSelected = day && selectedDay === dateStr;
+
                 return (
                   <div
                     key={idx}
-                    className={`min-h-[80px] sm:min-h-[100px] p-1 sm:p-2 ${
+                    onClick={() => {
+                      if (!day || isBlocked) return;
+                      setSelectedDay((prev) => (prev === dateStr ? null : dateStr));
+                    }}
+                    className={`relative min-h-[80px] sm:min-h-[100px] p-1 sm:p-2 ${
                       !day ? 'bg-gray-50' : isBlocked ? 'bg-red-50' : 'bg-white'
+                    } ${day && !isBlocked ? 'cursor-pointer' : ''} ${
+                      isSelected ? 'ring-2 ring-[#e55b2b]/50 ring-inset' : ''
                     }`}
                   >
                     {day && (
@@ -591,7 +601,7 @@ export default function BookingsPage() {
                             {day}
                           </span>
                           <button
-                            onClick={() => toggleBlockedDate(dateStr)}
+                            onClick={(e) => { e.stopPropagation(); toggleBlockedDate(dateStr); }}
                             className={`p-0.5 rounded transition-colors ${
                               isBlocked
                                 ? 'text-red-500 hover:text-red-700 hover:bg-red-100'
@@ -610,7 +620,7 @@ export default function BookingsPage() {
                               <div
                                 key={b.id}
                                 className="text-[10px] sm:text-xs px-1 py-0.5 rounded truncate cursor-pointer bg-[#e55b2b]/10 text-[#e55b2b] hover:bg-[#e55b2b]/20"
-                                onClick={() => { setSelectedBooking(b); setIsDetailOpen(true); }}
+                                onClick={(e) => { e.stopPropagation(); setSelectedBooking(b); setIsDetailOpen(true); }}
                               >
                                 {b.name}
                               </div>
@@ -619,6 +629,27 @@ export default function BookingsPage() {
                               <p className="text-[10px] text-[#4a6580]">+{dayBookings.length - 3} more</p>
                             )}
                           </div>
+                        )}
+                        {isSelected && !isBlocked && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNewBooking({
+                                name: '',
+                                contact: '',
+                                service_type: '',
+                                start_time: `${dateStr}T09:00`,
+                                end_time: '',
+                                notes: '',
+                                status: 'scheduled',
+                              });
+                              setIsAddOpen(true);
+                            }}
+                            title="New booking on this day"
+                            className="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-[#e55b2b] text-white flex items-center justify-center shadow-md hover:bg-[#e55b2b]/90 transition-colors"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </>
                     )}
@@ -713,7 +744,7 @@ export default function BookingsPage() {
       {/* Add Booking Modal */}
       <Modal
         isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
+        onClose={() => { setIsAddOpen(false); setSelectedDay(null); }}
         title="New Booking"
       >
         <form onSubmit={handleAddBooking} className="space-y-4">
@@ -762,7 +793,7 @@ export default function BookingsPage() {
             />
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-[#c8d8ea]">
-            <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => { setIsAddOpen(false); setSelectedDay(null); }}>
               Cancel
             </Button>
             <Button type="submit" className="bg-[#e55b2b] hover:bg-[#e55b2b]/90 text-white">Create Booking</Button>

@@ -21,7 +21,6 @@ import {
   CalendarCheck,
   CreditCard,
   Contact,
-  Megaphone,
   DollarSign,
   Truck,
   Smartphone,
@@ -37,8 +36,6 @@ import {
   ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
-  Settings,
-  ScrollText,
   ClipboardList,
   type LucideIcon,
 } from 'lucide-react';
@@ -101,7 +98,6 @@ const navGroups: NavGroup[] = [
       { name: 'AI Manager', href: '/admin/manager', icon: Sparkles },
       { name: 'Phone Calls', href: '/admin/calls', icon: Phone },
       { name: 'Agent Bots', href: '/admin/bots', icon: Activity },
-      { name: 'Marketing', href: '/admin/marketing/pipeline', icon: Megaphone },
       { name: 'Control Boards', href: '/admin/control-boards', icon: CircuitBoard },
     ],
   },
@@ -130,8 +126,6 @@ const navGroups: NavGroup[] = [
     guard: (profile) => profile?.role === 'admin',
     items: [
       { name: 'Users', href: '/admin/users', icon: Users },
-      { name: 'Logs', href: '/admin/logs', icon: ScrollText },
-      { name: 'Settings', href: '/admin/settings', icon: Settings },
     ],
   },
   {
